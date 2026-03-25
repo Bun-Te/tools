@@ -330,15 +330,8 @@ func (c *ComplianceChecker) checkRTPVariationGlobal(tables map[string]*stakergs.
 }
 
 func (c *ComplianceChecker) checkMaxWinAchievable(lut *stakergs.LookupTable, totalWeight uint64, stats *Statistics) ComplianceCheck {
-	// Max win should be achievable with hit-rate of at least 1 in 20,000,000 for base mode (cost=1)
-	// For bonus modes with higher cost, the threshold is adjusted: 20,000,000 / cost
-	// Example: bonus with cost=200x -> maxOdds = 20,000,000 / 200 = 100,000
-	baseMaxOdds := 20_000_000.0
-	cost := lut.Cost
-	if cost <= 0 {
-		cost = 1.0
-	}
-	maxOdds := baseMaxOdds / cost
+	// Max win must not be rarer than 1 in 20,000,000 (same threshold for all modes; no adjustment by cost).
+	maxOdds := 20_000_000.0
 
 	var maxPayoutWeight uint64
 	maxPayout := lut.MaxPayout()
@@ -358,13 +351,11 @@ func (c *ComplianceChecker) checkMaxWinAchievable(lut *stakergs.LookupTable, tot
 		Value:          fmt.Sprintf("1 in %s", formatLargeNumber(actualOdds)),
 		Severity:       "error",
 		Details: map[string]interface{}{
-			"max_payout":        stats.MaxPayout,
-			"max_payout_weight": maxPayoutWeight,
-			"total_weight":      totalWeight,
-			"actual_odds":       actualOdds,
-			"mode_cost":         cost,
-			"base_max_odds":     baseMaxOdds,
-			"adjusted_max_odds": maxOdds,
+			"max_payout":         stats.MaxPayout,
+			"max_payout_weight":  maxPayoutWeight,
+			"total_weight":       totalWeight,
+			"actual_odds":        actualOdds,
+			"max_allowed_odds":   maxOdds,
 		},
 	}
 

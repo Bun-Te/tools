@@ -591,8 +591,8 @@
 
 	// MaxWin validation functions
 	function validateMaxWinFreq(freq: number): { value: number; warning: string | null } {
-		if (freq < 100) return { value: 100, warning: 'Min frequency: 1:100' };
-		if (freq > 10000000) return { value: 10000000, warning: 'Max frequency: 1:10M' };
+		if (freq < 1) return { value: 1, warning: 'Min frequency: 1:1' };
+		if (freq > 20_000_000) return { value: 20_000_000, warning: 'Max frequency: 1:20M' };
 		return { value: Math.round(freq), warning: null };
 	}
 
