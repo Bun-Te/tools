@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Ayarlar",
-        "libraryPath": "Kütüphane yolu",
+        "libraryPath": "Publish files yolu",
         "frontendPort": "Frontend portu",
         "language": "Dil",
         "autoLoadBooks": "Kitapları otomatik yükle",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Mnemoo Tools'a Hoş Geldiniz",
         "description": "Mnemoo Tools'u kullanmaya başlamak için servisleri başlatın.",
-        "selectFolder": "Önce ayarlarda kütüphane klasörünüzü seçin."
+        "selectFolder": "Önce ayarlarda publish_files klasörünüzü seçin."
     },
     "status": {
         "running": "Çalışıyor",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Kullanılan portlar:",
-        "libraryNotSet": "Kütüphane yolu ayarlanmadı."
+        "libraryNotSet": "Publish files yolu ayarlanmadı."
     },
     "languages": {
         "en": "English",

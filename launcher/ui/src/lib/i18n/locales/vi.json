@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Cài đặt",
-        "libraryPath": "Đường dẫn thư viện",
+        "libraryPath": "Đường dẫn publish files",
         "frontendPort": "Cổng frontend",
         "language": "Ngôn ngữ",
         "autoLoadBooks": "Tự động tải sách",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Chào mừng đến với Mnemoo Tools",
         "description": "Khởi động các dịch vụ để bắt đầu sử dụng Mnemoo Tools.",
-        "selectFolder": "Trước tiên, chọn thư mục thư viện của bạn trong cài đặt."
+        "selectFolder": "Trước tiên, chọn thư mục publish_files của bạn trong cài đặt."
     },
     "status": {
         "running": "Đang chạy",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Cổng đang sử dụng:",
-        "libraryNotSet": "Đường dẫn thư viện chưa được đặt."
+        "libraryNotSet": "Đường dẫn publish files chưa được đặt."
     },
     "languages": {
         "en": "English",

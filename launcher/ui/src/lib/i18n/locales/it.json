@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Impostazioni",
-        "libraryPath": "Percorso libreria",
+        "libraryPath": "Percorso publish files",
         "frontendPort": "Porta frontend",
         "language": "Lingua",
         "autoLoadBooks": "Caricamento auto libri",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Benvenuto in Mnemoo Tools",
         "description": "Avvia i servizi per iniziare a usare Mnemoo Tools.",
-        "selectFolder": "Prima, seleziona la tua cartella libreria nelle impostazioni."
+        "selectFolder": "Prima, seleziona la tua cartella publish_files nelle impostazioni."
     },
     "status": {
         "running": "In esecuzione",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Porte in uso:",
-        "libraryNotSet": "Percorso libreria non impostato."
+        "libraryNotSet": "Percorso publish files non impostato."
     },
     "languages": {
         "en": "English",

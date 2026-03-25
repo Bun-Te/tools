@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Einstellungen",
-        "libraryPath": "Bibliothekspfad",
+        "libraryPath": "Publish Files Pfad",
         "frontendPort": "Frontend-Port",
         "language": "Sprache",
         "autoLoadBooks": "Bücher automatisch laden",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Willkommen bei Mnemoo Tools",
         "description": "Starten Sie die Dienste, um Mnemoo Tools zu verwenden.",
-        "selectFolder": "Wählen Sie zuerst Ihren Bibliotheksordner in den Einstellungen aus."
+        "selectFolder": "Wählen Sie zuerst Ihren publish_files-Ordner in den Einstellungen aus."
     },
     "status": {
         "running": "Läuft",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Ports in Verwendung:",
-        "libraryNotSet": "Bibliothekspfad nicht festgelegt."
+        "libraryNotSet": "Publish Files Pfad nicht festgelegt."
     },
     "languages": {
         "en": "English",

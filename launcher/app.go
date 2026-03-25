@@ -274,10 +274,10 @@ func (a *App) loadConfig() {
 	// 	}
 	// }
 
-	// Fallback: Try to find default library in testdata
-	defaultLibrary := filepath.Join(a.projectRoot, "backend", "testdata", "library")
-	if _, err := os.Stat(defaultLibrary); err == nil {
-		a.config.LibraryPath = defaultLibrary
+	// Fallback: Try to find default publish_files in testdata
+	defaultDir := filepath.Join(a.projectRoot, "backend", "testdata")
+	if _, err := os.Stat(defaultDir); err == nil {
+		a.config.LibraryPath = defaultDir
 	}
 }
 
@@ -404,7 +404,7 @@ func (a *App) SelectLibraryFolder() (string, error) {
 	wailsRuntime.WindowShow(a.ctx)
 
 	path, err := wailsRuntime.OpenDirectoryDialog(a.ctx, wailsRuntime.OpenDialogOptions{
-		Title:            "Select Library Folder",
+		Title:            "Select Publish Files Folder",
 		DefaultDirectory: defaultDir,
 	})
 	if err != nil {
@@ -435,7 +435,7 @@ func (a *App) StartBackend() error {
 	var cmd *exec.Cmd
 
 	// Build args list
-	args := []string{"-library", a.config.LibraryPath}
+	args := []string{"-dir", a.config.LibraryPath}
 	if a.config.AutoLoadBooks {
 		args = append(args, "-autoload-books")
 	}

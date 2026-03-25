@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "设置",
-        "libraryPath": "库路径",
+        "libraryPath": "Publish files 路径",
         "frontendPort": "前端端口",
         "language": "语言",
         "autoLoadBooks": "自动加载书籍",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "欢迎使用 Mnemoo Tools",
         "description": "启动服务以开始使用 Mnemoo Tools。",
-        "selectFolder": "首先，在设置中选择您的库文件夹。"
+        "selectFolder": "首先，在设置中选择您的 publish_files 文件夹。"
     },
     "status": {
         "running": "运行中",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "端口正在使用：",
-        "libraryNotSet": "库路径未设置。"
+        "libraryNotSet": "Publish files 路径未设置。"
     },
     "languages": {
         "en": "English",

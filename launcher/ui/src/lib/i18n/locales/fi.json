@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Asetukset",
-        "libraryPath": "Kirjaston polku",
+        "libraryPath": "Publish files -polku",
         "frontendPort": "Frontend-portti",
         "language": "Kieli",
         "autoLoadBooks": "Lataa kirjat automaattisesti",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Tervetuloa Mnemoo Toolsiin",
         "description": "Käynnistä palvelut aloittaaksesi Mnemoo Toolsin käytön.",
-        "selectFolder": "Valitse ensin kirjastokansio asetuksista."
+        "selectFolder": "Valitse ensin publish_files-kansio asetuksista."
     },
     "status": {
         "running": "Käynnissä",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Portit käytössä:",
-        "libraryNotSet": "Kirjaston polkua ei ole asetettu."
+        "libraryNotSet": "Publish files -polkua ei ole asetettu."
     },
     "languages": {
         "en": "English",

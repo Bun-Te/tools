@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Настройки",
-        "libraryPath": "Путь к библиотеке",
+        "libraryPath": "Путь к publish files",
         "frontendPort": "Порт фронтенда",
         "language": "Язык",
         "autoLoadBooks": "Автозагрузка книг",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Добро пожаловать в Mnemoo Tools",
         "description": "Запустите сервисы для начала работы.",
-        "selectFolder": "Сначала выберите папку библиотеки в настройках."
+        "selectFolder": "Сначала выберите папку publish_files в настройках."
     },
     "status": {
         "running": "Работает",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Порты заняты:",
-        "libraryNotSet": "Путь к библиотеке не задан."
+        "libraryNotSet": "Путь к publish files не задан."
     },
     "languages": {
         "en": "English",

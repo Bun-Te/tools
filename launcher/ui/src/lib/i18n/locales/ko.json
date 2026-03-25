@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "설정",
-        "libraryPath": "라이브러리 경로",
+        "libraryPath": "Publish files 경로",
         "frontendPort": "프론트엔드 포트",
         "language": "언어",
         "autoLoadBooks": "자동 북 로드",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Mnemoo Tools에 오신 것을 환영합니다",
         "description": "Mnemoo Tools를 사용하려면 서비스를 시작하세요.",
-        "selectFolder": "먼저 설정에서 라이브러리 폴더를 선택하세요."
+        "selectFolder": "먼저 설정에서 publish_files 폴더를 선택하세요."
     },
     "status": {
         "running": "실행 중",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "사용 중인 포트:",
-        "libraryNotSet": "라이브러리 경로가 설정되지 않았습니다."
+        "libraryNotSet": "Publish files 경로가 설정되지 않았습니다."
     },
     "languages": {
         "en": "English",

@@ -17,6 +17,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -97,7 +98,7 @@ func generateAndSaveCert() (tls.Certificate, error) {
 }
 
 func main() {
-	libraryPath := flag.String("library", "", "Path to library folder (required)")
+	dirPath := flag.String("dir", "", "Path to publish_files folder containing index.json (required)")
 	port := flag.Int("port", 7754, "Server port (HTTP)")
 	httpsPort := flag.Int("https-port", 7755, "HTTPS port (0 to disable)")
 	convexURL := flag.String("convex-url", "", "URL of the Convex Optimizer Python service (e.g., http://localhost:7756)")
@@ -112,17 +113,17 @@ func main() {
 		}
 	}
 
-	if *libraryPath == "" {
-		fmt.Fprintln(os.Stderr, "Error: -library flag is required")
-		fmt.Fprintln(os.Stderr, "Usage: lutexplorer -library <path/to/library> [-port 7754] [-https-port 7755]")
+	if *dirPath == "" {
+		fmt.Fprintln(os.Stderr, "Error: -dir flag is required")
+		fmt.Fprintln(os.Stderr, "Usage: lutexplorer -dir <path/to/publish_files> [-port 7754] [-https-port 7755]")
 		os.Exit(1)
 	}
 
 	addr := fmt.Sprintf(":%d", *port)
 	httpsAddr := fmt.Sprintf(":%d", *httpsPort)
 
-	// Load index from library folder
-	loader := lut.NewLoaderFromLibrary(*libraryPath)
+	// Load index from publish_files folder
+	loader := lut.NewLoader(filepath.Join(*dirPath, "index.json"))
 	if err := loader.Load(); err != nil {
 		log.Fatalf("Failed to load index: %v", err)
 	}

@@ -399,7 +399,7 @@
         <div class="setting-group">
           <label for="library-path">{$_('settings.libraryPath')}</label>
           <div class="input-with-button">
-            <input id="library-path" type="text" bind:value={config.libraryPath} placeholder="/path/to/library" />
+            <input id="library-path" type="text" bind:value={config.libraryPath} placeholder="/path/to/publish_files" />
             <button class="secondary" onclick={selectFolder} disabled={selectingFolder}>
               {selectingFolder ? '...' : $_('buttons.browse')}
             </button>

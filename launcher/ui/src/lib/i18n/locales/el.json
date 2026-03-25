@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "Ρυθμίσεις",
-        "libraryPath": "Διαδρομή βιβλιοθήκης",
+        "libraryPath": "Διαδρομή publish files",
         "frontendPort": "Θύρα frontend",
         "language": "Γλώσσα",
         "autoLoadBooks": "Αυτόματη φόρτωση βιβλίων",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "Καλώς ήρθατε στο Mnemoo Tools",
         "description": "Ξεκινήστε τις υπηρεσίες για να χρησιμοποιήσετε το Mnemoo Tools.",
-        "selectFolder": "Πρώτα, επιλέξτε τον φάκελο της βιβλιοθήκης σας στις ρυθμίσεις."
+        "selectFolder": "Πρώτα, επιλέξτε τον φάκελο publish_files στις ρυθμίσεις."
     },
     "status": {
         "running": "Εκτελείται",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "Θύρες σε χρήση:",
-        "libraryNotSet": "Η διαδρομή βιβλιοθήκης δεν έχει οριστεί."
+        "libraryNotSet": "Η διαδρομή publish files δεν έχει οριστεί."
     },
     "languages": {
         "en": "English",

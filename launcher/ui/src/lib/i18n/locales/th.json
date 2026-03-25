@@ -22,7 +22,7 @@
     },
     "settings": {
         "title": "การตั้งค่า",
-        "libraryPath": "เส้นทางไลบรารี",
+        "libraryPath": "เส้นทาง publish files",
         "frontendPort": "พอร์ตฟรอนท์เอนด์",
         "language": "ภาษา",
         "autoLoadBooks": "โหลดหนังสืออัตโนมัติ",
@@ -38,7 +38,7 @@
     "welcome": {
         "title": "ยินดีต้อนรับสู่ Mnemoo Tools",
         "description": "เริ่มบริการเพื่อเริ่มใช้งาน Mnemoo Tools",
-        "selectFolder": "ก่อนอื่น เลือกโฟลเดอร์ไลบรารีของคุณในการตั้งค่า"
+        "selectFolder": "ก่อนอื่น เลือกโฟลเดอร์ publish_files ของคุณในการตั้งค่า"
     },
     "status": {
         "running": "กำลังทำงาน",
@@ -48,7 +48,7 @@
     },
     "errors": {
         "portsInUse": "พอร์ตที่ใช้งานอยู่:",
-        "libraryNotSet": "ยังไม่ได้ตั้งค่าเส้นทางไลบรารี"
+        "libraryNotSet": "ยังไม่ได้ตั้งค่าเส้นทาง publish files"
     },
     "languages": {
         "en": "English",
