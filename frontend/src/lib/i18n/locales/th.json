@@ -320,7 +320,10 @@
 		"look": "ดู",
 		"force": "บังคับ",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "ส่วนแบ่ง RTP ของโหมด (RTP รวม = 100%)"
+		"rtpShareHint": "ส่วนแบ่ง RTP ของโหมด (RTP รวม = 100%)",
+		"chartOverview": "จำนวน books ตามช่วงจ่าย",
+		"logScale": "มาตราส่วนลอการิทึม (Y)",
+		"shareOfBooks": "{value}% ของ books ทั้งหมด"
 	},
 	"topPayouts": {
 		"title": "การจ่ายสูงสุด"

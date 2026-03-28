@@ -317,7 +317,10 @@
 		"look": "СМОТРЕТЬ",
 		"force": "ФОРСИРОВАТЬ",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Доля RTP режима (весь RTP = 100%)"
+		"rtpShareHint": "Доля RTP режима (весь RTP = 100%)",
+		"chartOverview": "Книги по диапазонам выплат",
+		"logScale": "Логарифм (Y)",
+		"shareOfBooks": "{value}% от всех книг"
 	},
 	"topPayouts": {
 		"title": "ТОП ВЫПЛАТ"

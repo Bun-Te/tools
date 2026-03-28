@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { api, type DistributionItem, type PayoutBucket, type LGSSessionSummary, type BucketDistributionResponse } from '$lib/api';
 	import { _ } from '$lib/i18n';
+	import PayoutDistributionChart from './PayoutDistributionChart.svelte';
 
 	interface Props {
 		buckets: PayoutBucket[];
@@ -261,6 +262,8 @@
 	{#if !buckets || buckets.length === 0}
 		<div class="py-8 text-center text-slate-500">{$_('status.noData')}</div>
 	{:else}
+		<PayoutDistributionChart {buckets} {formatRange} />
+
 		<div class="space-y-2">
 			{#each sortedBuckets() as bucket}
 				{@const key = getBucketKey(bucket)}

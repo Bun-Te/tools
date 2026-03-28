@@ -320,7 +320,10 @@
 		"look": "보기",
 		"force": "강제",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "모드 RTP 비중 (전체 RTP = 100%)"
+		"rtpShareHint": "모드 RTP 비중 (전체 RTP = 100%)",
+		"chartOverview": "지급 구간별 북 수",
+		"logScale": "로그 스케일 (Y)",
+		"shareOfBooks": "전체 북의 {value}%"
 	},
 	"topPayouts": {
 		"title": "상위 지급"

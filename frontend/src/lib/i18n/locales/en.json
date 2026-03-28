@@ -317,7 +317,10 @@
 		"look": "LOOK",
 		"force": "FORCE",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Share of mode RTP (whole RTP = 100%)"
+		"rtpShareHint": "Share of mode RTP (whole RTP = 100%)",
+		"chartOverview": "Books by payout range",
+		"logScale": "Log scale (Y)",
+		"shareOfBooks": "{value}% of all books"
 	},
 	"topPayouts": {
 		"title": "TOP PAYOUTS"

@@ -320,7 +320,10 @@
 		"look": "KATSO",
 		"force": "PAKOTA",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Osuus tilan RTP:stä (koko RTP = 100 %)"
+		"rtpShareHint": "Osuus tilan RTP:stä (koko RTP = 100 %)",
+		"chartOverview": "Kirjat voittoalueittain",
+		"logScale": "Log-asteikko (Y)",
+		"shareOfBooks": "{value}% kaikista kirjoista"
 	},
 	"topPayouts": {
 		"title": "PARHAAT VOITOT"

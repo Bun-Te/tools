@@ -320,7 +320,10 @@
 		"look": "ANSEHEN",
 		"force": "ERZWINGEN",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Anteil am Modus-RTP (gesamtes RTP = 100 %)"
+		"rtpShareHint": "Anteil am Modus-RTP (gesamtes RTP = 100 %)",
+		"chartOverview": "Bücher nach Auszahlungsbereich",
+		"logScale": "Log-Skala (Y)",
+		"shareOfBooks": "{value}% aller Bücher"
 	},
 	"topPayouts": {
 		"title": "TOP-AUSZAHLUNGEN"

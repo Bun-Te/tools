@@ -320,7 +320,10 @@
 		"look": "VER",
 		"force": "FORÇAR",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Parcela do RTP do modo (RTP total = 100 %)"
+		"rtpShareHint": "Parcela do RTP do modo (RTP total = 100 %)",
+		"chartOverview": "Livros por faixa de pagamento",
+		"logScale": "Escala log (Y)",
+		"shareOfBooks": "{value}% de todos os livros"
 	},
 	"topPayouts": {
 		"title": "MAIORES PAGAMENTOS"

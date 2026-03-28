@@ -320,7 +320,10 @@
 		"look": "VOIR",
 		"force": "FORCER",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Part du RTP du mode (RTP total = 100 %)"
+		"rtpShareHint": "Part du RTP du mode (RTP total = 100 %)",
+		"chartOverview": "Livres par plage de gain",
+		"logScale": "Échelle log (Y)",
+		"shareOfBooks": "{value}% de tous les livres"
 	},
 	"topPayouts": {
 		"title": "MEILLEURS GAINS"

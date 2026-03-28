@@ -320,7 +320,10 @@
 		"look": "BAK",
 		"force": "ZORLA",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Mod RTP payı (toplam RTP = %100)"
+		"rtpShareHint": "Mod RTP payı (toplam RTP = %100)",
+		"chartOverview": "Ödeme aralığına göre kitaplar",
+		"logScale": "Log ölçek (Y)",
+		"shareOfBooks": "Tüm kitapların {value}% payı"
 	},
 	"topPayouts": {
 		"title": "EN YÜKSEK ÖDEMELER"

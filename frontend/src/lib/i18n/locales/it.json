@@ -320,7 +320,10 @@
 		"look": "GUARDA",
 		"force": "FORZA",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Quota del RTP della modalità (RTP totale = 100 %)"
+		"rtpShareHint": "Quota del RTP della modalità (RTP totale = 100 %)",
+		"chartOverview": "Libri per fascia di payout",
+		"logScale": "Scala log (Y)",
+		"shareOfBooks": "{value}% di tutti i libri"
 	},
 	"topPayouts": {
 		"title": "MIGLIORI PAGAMENTI"

@@ -320,7 +320,10 @@
 		"look": "ΠΡΟΒΟΛΗ",
 		"force": "ΕΞΑΝΑΓΚΑΣΜΟΣ",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Μερίδιο RTP λειτουργίας (συνολικό RTP = 100%)"
+		"rtpShareHint": "Μερίδιο RTP λειτουργίας (συνολικό RTP = 100%)",
+		"chartOverview": "Βιβλία ανά εύρος πληρωμής",
+		"logScale": "Λογαριθμική κλίμακα (Y)",
+		"shareOfBooks": "{value}% όλων των βιβλίων"
 	},
 	"topPayouts": {
 		"title": "ΚΟΡΥΦΑΙΕΣ ΠΛΗΡΩΜΕΣ"

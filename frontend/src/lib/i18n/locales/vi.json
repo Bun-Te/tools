@@ -320,7 +320,10 @@
 		"look": "XEM",
 		"force": "BUỘC",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "Phần RTP của chế độ (tổng RTP = 100%)"
+		"rtpShareHint": "Phần RTP của chế độ (tổng RTP = 100%)",
+		"chartOverview": "Số books theo khoản thanh toán",
+		"logScale": "Thang log (Y)",
+		"shareOfBooks": "{value}% tổng số books"
 	},
 	"topPayouts": {
 		"title": "THANH TOÁN CAO NHẤT"

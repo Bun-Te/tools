@@ -320,7 +320,10 @@
 		"look": "查看",
 		"force": "强制",
 		"rtpShare": "% RTP",
-		"rtpShareHint": "占模式 RTP 比例（总 RTP = 100%）"
+		"rtpShareHint": "占模式 RTP 比例（总 RTP = 100%）",
+		"chartOverview": "各赔付区间的 books 数量",
+		"logScale": "对数刻度 (Y)",
+		"shareOfBooks": "占全部 books 的 {value}%"
 	},
 	"topPayouts": {
 		"title": "最高支付"
