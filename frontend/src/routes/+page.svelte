@@ -8,7 +8,6 @@
 		DistributionTable,
 		ModeComparison,
 		EventModal,
-		ComplianceChecklist,
 		CrowdSimPanel,
 		BooksLoadingPanel,
 		LGSPanel,
@@ -30,7 +29,6 @@
 	let compareItems = $state<CompareItem[]>([]);
 	let complianceData = $state<AllModesComplianceResult | null>(null);
 	let complianceReady = $state(false);
-	let expandedComplianceMode = $state<string | null>(null);
 
 	let loading = $state(true);
 	let statsLoading = $state(false);
@@ -42,8 +40,8 @@
 
 	// Active panel for detailed view
 	// Note: 'convexopt' temporarily disabled, will be enabled later
-	type PanelType = 'overview' | 'distribution' | 'compliance' | 'crowdsim' | 'optimizer' | 'lgs' | 'events';
-	const validPanels: PanelType[] = ['overview', 'distribution', 'compliance', 'crowdsim', 'optimizer', 'lgs', 'events'];
+	type PanelType = 'overview' | 'distribution' | 'crowdsim' | 'optimizer' | 'lgs' | 'events';
+	const validPanels: PanelType[] = ['overview', 'distribution', 'crowdsim', 'optimizer', 'lgs', 'events'];
 	let activePanel = $state<PanelType>('overview');
 
 	// Hash-based navigation
@@ -197,18 +195,6 @@
 	};
 
 	// Simple volatility label for mode cards (no breakeven data available)
-	// Navigate to compliance tab and expand specific mode
-	function goToCompliance(mode: string, event: MouseEvent | KeyboardEvent) {
-		event.stopPropagation(); // Don't trigger the mode selection
-		expandedComplianceMode = mode;
-		setPanel('compliance');
-	}
-
-	function openComplianceForMode(mode: string) {
-		expandedComplianceMode = mode;
-		setPanel('compliance');
-	}
-
 	// Get compliance status for a mode
 	function getModeComplianceStatus(mode: string): { passed: boolean; hasData: boolean } {
 		if (!complianceData?.mode_results) return { passed: false, hasData: false };
@@ -265,7 +251,6 @@
 	const tabs = [
 		{ id: 'overview', labelKey: 'nav.overview', icon: 'grid', badge: null },
 		{ id: 'distribution', labelKey: 'nav.distribution', icon: 'chart', badge: null },
-		{ id: 'compliance', labelKey: 'nav.compliance', icon: 'shield', badge: null },
 		{ id: 'events', labelKey: 'nav.events', icon: 'eye', badge: null },
 		{ id: 'crowdsim', labelKey: 'nav.crowdsim', icon: 'users', badge: null },
 		{ id: 'optimizer', labelKey: 'nav.optimizer', icon: 'bolt', badge: 'beta' },
@@ -406,14 +391,10 @@
 										<span class="font-display text-lg text-[var(--color-light)] tracking-wide uppercase">{mode.mode}</span>
 										<!-- Compliance indicator -->
 										{#if compliance.hasData}
-											<!-- svelte-ignore a11y_no_static_element_interactions -->
 											<span
 												class="compliance-indicator {compliance.passed ? 'passed' : 'failed'}"
-												role="button"
-												tabindex="0"
-												onclick={(e) => goToCompliance(mode.mode, e)}
-												onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') goToCompliance(mode.mode, e); }}
 												title={compliance.passed ? 'Compliance passed' : 'Compliance issues found'}
+												aria-hidden="true"
 											>
 												{#if compliance.passed}
 													<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
@@ -637,12 +618,7 @@
 
 								<!-- Compliance snapshot -->
 								<div class="glass-panel rounded-2xl p-6 flex flex-col min-h-0">
-									<TopPayouts
-										mode={selectedMode}
-										data={complianceData}
-										ready={complianceReady}
-										onOpenFull={openComplianceForMode}
-									/>
+									<TopPayouts mode={selectedMode} data={complianceData} ready={complianceReady} />
 								</div>
 
 								<!-- Mode Comparison -->
@@ -657,12 +633,6 @@
 									mode={selectedMode ?? ''}
 									onLook={openEventModal}
 								/>
-							</div>
-						{:else if activePanel === 'compliance'}
-							<div class="glass-panel rounded-2xl p-6">
-								{#key reloadKey}
-									<ComplianceChecklist expandedMode={expandedComplianceMode} />
-								{/key}
 							</div>
 						{:else if activePanel === 'crowdsim'}
 							<div class="glass-panel rounded-2xl p-6">

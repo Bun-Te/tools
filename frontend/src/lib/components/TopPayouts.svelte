@@ -6,10 +6,9 @@
 		mode: string | null;
 		data: AllModesComplianceResult | null;
 		ready: boolean;
-		onOpenFull?: (mode: string) => void;
 	}
 
-	let { mode, data, ready, onOpenFull }: Props = $props();
+	let { mode, data, ready }: Props = $props();
 
 	function rowTone(check: ComplianceCheck): string {
 		if (check.passed) return 'text-slate-500';
@@ -61,26 +60,15 @@
 					<span class="text-xs font-mono uppercase tracking-widest text-slate-400 capitalize truncate min-w-0">
 						{mode}
 					</span>
-					<div class="flex items-center gap-3 shrink-0">
-						<span
-							class="text-[11px] font-mono tabular-nums {modeResult.passed
-								? 'text-emerald-500/90'
-								: 'text-[var(--color-coral)]'}"
-						>
-							{modeResult.passed
-								? `${modeResult.passed_count}/${modeResult.checks.length}`
-								: `−${modeResult.failed_count}`}
-						</span>
-						{#if onOpenFull}
-							<button
-								type="button"
-								class="text-[11px] font-mono uppercase tracking-wider text-slate-500 hover:text-[var(--color-gold)] transition-colors"
-								onclick={() => onOpenFull(mode)}
-							>
-								{$_('buttons.view')}
-							</button>
-						{/if}
-					</div>
+					<span
+						class="text-[11px] font-mono tabular-nums shrink-0 {modeResult.passed
+							? 'text-emerald-500/90'
+							: 'text-[var(--color-coral)]'}"
+					>
+						{modeResult.passed
+							? `${modeResult.passed_count}/${modeResult.checks.length}`
+							: `−${modeResult.failed_count}`}
+					</span>
 				</div>
 
 				<ul class="divide-y divide-slate-700/40 rounded-xl border border-slate-700/35 bg-slate-900/20">
