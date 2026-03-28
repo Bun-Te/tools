@@ -19,6 +19,7 @@
 		LanguageSelector
 	} from '$lib/components';
 	import { lutClientRefreshRequest } from '$lib/stores/lutClientRefresh';
+	import { BUILD_COMMIT, BUILD_VERSION } from '$lib/buildMeta';
 
 	// Certificate check state
 	let welcomeModal: WelcomeModal;
@@ -518,16 +519,21 @@
 				{#if currentModeInfo && stats}
 					<!-- Navigation Tabs -->
 					<section class="mb-8 opacity-0 animate-fade-up delay-1" style="animation-fill-mode: forwards;">
-						<div class="flex gap-1 p-1.5 rounded-xl glass-panel w-fit">
-							{#each tabs as tab}
+						<div class="tabs-nav" role="tablist" aria-label="Main panels">
+							{#each tabs as tab (tab.id)}
 								{@const isActive = activePanel === tab.id}
 								<button
 									class="tab-btn {isActive ? 'active' : ''}"
 									onclick={() => setPanel(tab.id)}
+									role="tab"
+									aria-selected={isActive}
+									aria-controls={`panel-${tab.id}`}
+									id={`tab-${tab.id}`}
+									tabindex={isActive ? 0 : -1}
 								>
-									<span class="font-mono text-xs tracking-wider">{$_(tab.labelKey)}</span>
+									<span class="font-mono text-xs tracking-wider uppercase">{$_(tab.labelKey)}</span>
 									{#if tab.badgeKey}
-										<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{$_(tab.badgeKey)}</span>
+										<span class="tab-badge">{$_(tab.badgeKey)}</span>
 									{/if}
 								</button>
 							{/each}
@@ -535,7 +541,13 @@
 					</section>
 
 					<!-- Panel Content -->
-					<section class="opacity-0 animate-fade-up delay-2" style="animation-fill-mode: forwards;">
+					<div
+						class="opacity-0 animate-fade-up delay-2"
+						style="animation-fill-mode: forwards;"
+						role="tabpanel"
+						id={`panel-${activePanel}`}
+						aria-labelledby={`tab-${activePanel}`}
+					>
 						{#if activePanel === 'overview'}
 							<div class="grid gap-6 lg:grid-cols-2 items-stretch">
 								<!-- Detailed Metrics Grid -->
@@ -714,7 +726,7 @@
 								{/if}
 							</div>
 						{/if}
-					</section>
+					</div>
 				{:else}
 					<!-- No mode selected -->
 					<div class="py-32 text-center">
@@ -735,7 +747,12 @@
 			<div class="max-w-[1800px] mx-auto px-8 flex items-center justify-between">
 				<div class="flex items-center gap-4">
 					<div class="w-1 h-4 bg-[var(--color-cyan)]/50 rounded-full"></div>
-					<p class="text-xs font-mono text-[var(--color-mist)]">v1</p>
+					<p class="text-xs font-mono text-[var(--color-mist)] tracking-tight">
+						<span class="text-[var(--color-mist)]">v{BUILD_VERSION}</span>
+						{#if BUILD_COMMIT}
+							<span class="text-[var(--color-mist)]/55"> · {BUILD_COMMIT}</span>
+						{/if}
+					</p>
 				</div>
 				<div class="flex items-center gap-6">
 					<span class="text-xs font-mono text-[var(--color-mist)]">MNEMOO TOOLS</span>
