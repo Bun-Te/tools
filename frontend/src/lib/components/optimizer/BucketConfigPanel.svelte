@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { api } from '$lib/api/client';
 	import { onMount, onDestroy } from 'svelte';
-	import type { WSOptimizerProgress, WSOptimizerMessage, ModeAnalysis, GenerateConfigsAnalysis, VoidedBucketInfo, VoidedOutcomeInfo } from '$lib/api/types';
+	import type { ModeAnalysis, GenerateConfigsAnalysis, VoidedBucketInfo, VoidedOutcomeInfo } from '$lib/api/types';
 	import { _ } from '$lib/i18n';
 
 	// Simple mode info type for optimizer context (subset of full ModeInfo)
@@ -108,15 +108,10 @@
 	type DisplayMode = 'abs' | 'norm';
 	let displayMode = $state<DisplayMode>('norm');
 
-	// Brute force optimization state (enabled by default now)
+	// Brute force optimization state (always enabled now as it is deterministic and instant)
 	let enableBruteForce = $state(true);
-	// Note: optimization mode removed - now runs until converged or stopped
 	let globalMaxWinFreq = $state<number | null>(null);
 	let showAdvancedOptions = $state(false);
-
-	// WebSocket progress state
-	let ws: WebSocket | null = $state(null);
-	let progress = $state<WSOptimizerProgress | null>(null);
 
 	// Profile/Presets state
 	let showProfiles = $state(false);
@@ -391,7 +386,6 @@
 		isLoading = true;
 		error = null;
 		result = null;
-		progress = null;
 		optimizerState = 'running';
 
 		// In presets mode, apply selected preset first
@@ -432,105 +426,23 @@
 			enable_auto_voiding: enableAutoVoiding
 		};
 
-		// Use WebSocket for brute force (real-time progress)
-		if (enableBruteForce) {
-			runBruteForceOptimizeWS(config);
-		} else {
-			// Use regular HTTP for standard optimization
-			try {
-				const response = await api.bucketOptimize(mode, config);
-				result = response;
-				onOptimize?.(response);
-				optimizerState = 'complete';
-			} catch (e) {
-				error = e instanceof Error ? e.message : 'Optimization failed';
-				optimizerState = 'error';
-			} finally {
-				isLoading = false;
-			}
-		}
-	}
-
-	function runBruteForceOptimizeWS(config: Record<string, unknown>) {
-		// Close existing WebSocket if any
-		if (ws) {
-			ws.close();
-			ws = null;
-		}
-
-		const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-		const wsUrl = `${protocol}//${window.location.hostname}:7754/api/optimizer/${encodeURIComponent(mode)}/optimize-stream`;
-
-		ws = new WebSocket(wsUrl);
-
-		ws.onopen = () => {
-			ws?.send(JSON.stringify(config));
-		};
-
-		ws.onmessage = (event) => {
-			try {
-				const msg = JSON.parse(event.data) as WSOptimizerMessage;
-
-				if (msg.type === 'progress') {
-					progress = msg as WSOptimizerProgress;
-				} else if (msg.type === 'result') {
-					result = (msg as { type: 'result'; result: typeof result }).result;
-					onOptimize?.(result);
-					isLoading = false;
-					progress = null;
-					optimizerState = 'complete';
-					ws?.close();
-					ws = null;
-				} else if (msg.type === 'error') {
-					error = (msg as { type: 'error'; message: string }).message;
-					isLoading = false;
-					progress = null;
-					optimizerState = 'error';
-					ws?.close();
-					ws = null;
-				}
-			} catch (e) {
-				error = 'Failed to parse WebSocket message';
-				optimizerState = 'error';
-			}
-		};
-
-		ws.onerror = () => {
-			// Only show generic message if no specific error was set
-			if (!error) {
-				error = 'WebSocket connection failed';
-			}
-			isLoading = false;
-			progress = null;
+		// Use regular HTTP for standard optimization (brute force is handled internally and returns instantly)
+		try {
+			const response = await api.bucketOptimize(mode, config);
+			result = response;
+			onOptimize?.(response);
+			optimizerState = 'complete';
+		} catch (e) {
+			error = e instanceof Error ? e.message : 'Optimization failed';
 			optimizerState = 'error';
-			ws = null;
-		};
-
-		ws.onclose = () => {
-			if (isLoading && !error) {
-				// Unexpected close - only show generic message if no specific error was set
-				error = 'WebSocket connection closed unexpectedly';
-				isLoading = false;
-				progress = null;
-				optimizerState = 'error';
-			}
-			ws = null;
-		};
-	}
-
-	// Stop running optimization
-	function stopOptimization() {
-		if (ws && ws.readyState === WebSocket.OPEN) {
-			ws.send(JSON.stringify({ type: 'stop' }));
+		} finally {
+			isLoading = false;
 		}
 	}
 
-	// Cleanup WebSocket and timers on component destroy
+
+	// Cleanup timers on component destroy
 	onDestroy(() => {
-		if (ws) {
-			ws.close();
-			ws = null;
-		}
 		if (loadPresetsDebounceTimer) {
 			clearTimeout(loadPresetsDebounceTimer);
 			loadPresetsDebounceTimer = null;
@@ -1003,91 +915,8 @@
 			</div>
 		{/if}
 
-		<!-- MaxWin Controls Panel -->
-		<div class="p-3 rounded-xl bg-gradient-to-r from-[var(--color-gold)]/10 to-[var(--color-coral)]/10 border border-[var(--color-gold)]/20">
-			<div class="flex items-center justify-between mb-3">
-				<div class="flex items-center gap-2">
-					<span class="font-mono text-sm text-[var(--color-gold)]">{$_('optimizer.maxwinControl')}</span>
-					<span class="px-2 py-0.5 text-xs font-mono bg-[var(--color-emerald)]/20 text-[var(--color-emerald)] rounded">NEW</span>
-				</div>
-				<button
-					class="px-3 py-1.5 text-xs font-mono rounded bg-[var(--color-gold)]/20 text-[var(--color-gold)] hover:bg-[var(--color-gold)]/30 transition-colors"
-					onclick={autoFillMaxWin}
-					title="Auto-fill optimal maxwin values (1% RTP)"
-					{disabled}
-				>{$_('optimizer.autoFill')}</button>
-			</div>
-
-			<div class="grid grid-cols-2 gap-3">
-				<!-- MaxWin Frequency -->
-				<div class="flex flex-col gap-1">
-					<label class="text-xs font-mono text-[var(--color-mist)]">{$_('optimizer.frequency')}</label>
-					<div class="flex items-center gap-1.5">
-						<span class="text-sm text-[var(--color-coral)]">1:</span>
-						<input
-							type="number"
-							bind:value={maxWinFreq}
-							onchange={onMaxWinFreqChange}
-							class="flex-1 px-2 py-1.5 text-sm font-mono bg-[var(--color-coral)]/10 border border-[var(--color-coral)]/20 rounded text-[var(--color-coral)] text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-							step="1000"
-							min="100"
-							placeholder="50000"
-							{disabled}
-						/>
-					</div>
-					<span class="text-xs font-mono text-[var(--color-mist)]/60">{$_('optimizer.oneInSpins', { values: { value: formatFreq(maxWinFreq) } })}</span>
-				</div>
-
-				<!-- RTP Contribution -->
-				<div class="flex flex-col gap-1">
-					<label class="text-xs font-mono text-[var(--color-mist)]">{$_('optimizer.rtpContribution')}</label>
-					<div class="flex items-center gap-1.5">
-						<input
-							type="number"
-							bind:value={maxWinRtpContrib}
-							onchange={onMaxWinRtpChange}
-							class="flex-1 px-2 py-1.5 text-sm font-mono bg-[var(--color-violet)]/10 border border-[var(--color-violet)]/20 rounded text-[var(--color-violet)] text-right focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-							step="0.1"
-							min="0.01"
-							max="10"
-							placeholder="1.0"
-							{disabled}
-						/>
-						<span class="text-sm text-[var(--color-violet)]">%</span>
-					</div>
-					<span class="text-xs font-mono text-[var(--color-mist)]/60">{maxWinRtpContrib}{$_('optimizer.ofTargetRtp')}</span>
-				</div>
-			</div>
-
-			{#if modeInfo?.max_payout}
-				<div class="mt-2 text-xs font-mono text-[var(--color-mist)]/60">
-					{$_('optimizer.maxPayout')} {modeInfo.max_payout}x
-				</div>
-			{/if}
-			{#if maxWinWarning}
-				<div class="mt-2 px-2 py-1 rounded bg-amber-500/20 text-xs font-mono text-amber-400">
-					{maxWinWarning}
-				</div>
-			{/if}
-		</div>
-
-		<!-- Brute Force Panel (inline) -->
-		<div class="flex items-center justify-between p-3 rounded-xl bg-[var(--color-violet)]/10 border border-[var(--color-violet)]/20">
-			<div class="flex items-center gap-2">
-				<span class="font-mono text-sm text-[var(--color-light)]">{$_('optimizer.bruteForce')}</span>
-				<span class="text-xs font-mono text-[var(--color-mist)]">{$_('optimizer.runsUntilConverged')}</span>
-			</div>
-			{#if isLoading}
-				<button
-					class="px-4 py-1.5 text-xs font-mono rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
-					onclick={stopOptimization}
-					title="Stop optimization and use best result so far"
-				>{$_('optimizer.stop')}</button>
-			{/if}
-		</div>
-
 		<!-- Auto-Voiding Panel (PRESETS mode) -->
-		<div class="flex items-center justify-between p-3 rounded-xl bg-[var(--color-coral)]/5 border border-[var(--color-coral)]/20">
+		<div class="flex items-center justify-between p-3 rounded-xl bg-[var(--color-coral)]/5 border border-[var(--color-coral)]/20 mt-2">
 			<div class="flex items-center gap-2">
 				<span class="font-mono text-sm text-[var(--color-coral)]">{$_('optimizer.autoVoid')}</span>
 				<span class="text-xs font-mono text-[var(--color-mist)]">{$_('optimizer.autoRemoveOutcomes')}</span>
@@ -1474,21 +1303,6 @@
 				</div>
 			</div>
 
-			<!-- Brute Force Mode -->
-			<div class="flex items-center justify-between">
-				<div class="flex items-center gap-2">
-					<span class="text-sm font-mono text-[var(--color-mist)]">{$_('optimizer.bruteForce')}</span>
-					<span class="text-xs font-mono text-[var(--color-mist)]/50">{$_('optimizer.runsUntilConverged')}</span>
-				</div>
-				{#if isLoading}
-					<button
-						class="px-4 py-1.5 text-xs font-mono rounded bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-all"
-						onclick={stopOptimization}
-						title="Stop optimization and use best result so far"
-					>{$_('optimizer.stop')}</button>
-				{/if}
-			</div>
-
 			<!-- Auto-Voiding Toggle -->
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-2">
@@ -1508,36 +1322,6 @@
 	{/if}
 
 	<!-- ═══════ COMMON ELEMENTS ═══════ -->
-
-	<!-- Progress Bar (during brute force optimization) -->
-	{#if progress}
-		{@const isUnlimited = progress.max_iter >= 1000000}
-		{@const errorProgress = isUnlimited ? Math.max(0, Math.min(100, 100 - (Math.log10(progress.error + 0.00001) + 5) * 20)) : (progress.iteration / progress.max_iter) * 100}
-		<div class="p-4 rounded-xl bg-[var(--color-graphite)]/50 border border-[var(--color-gold)]/20">
-			<div class="flex items-center justify-between mb-2">
-				<div class="flex items-center gap-2">
-					<span class="text-sm font-mono text-[var(--color-gold)]">{progress.phase.toUpperCase()}</span>
-					<span class="w-2 h-2 rounded-full bg-[var(--color-gold)] animate-pulse"></span>
-				</div>
-				{#if isUnlimited}
-					<span class="text-xs font-mono text-[var(--color-mist)]">iter {progress.iteration.toLocaleString()}</span>
-				{:else}
-					<span class="text-xs font-mono text-[var(--color-mist)]">{progress.iteration}/{progress.max_iter}</span>
-				{/if}
-			</div>
-			<div class="w-full h-2 bg-[var(--color-slate)] rounded-full overflow-hidden mb-2">
-				<div
-					class="h-full bg-gradient-to-r from-[var(--color-gold)] to-[var(--color-coral)] transition-all duration-200"
-					style="width: {errorProgress}%"
-				></div>
-			</div>
-			<div class="flex justify-between text-xs font-mono">
-				<span class="text-[var(--color-mist)]">RTP: <span class="text-[var(--color-cyan)]">{(progress.current_rtp * 100).toFixed(3)}%</span></span>
-				<span class="text-[var(--color-mist)]">Target: <span class="text-[var(--color-emerald)]">{(progress.target_rtp * 100).toFixed(2)}%</span></span>
-				<span class="text-[var(--color-mist)]">Error: <span class="{progress.error < 0.0001 ? 'text-[var(--color-emerald)]' : 'text-[var(--color-coral)]'}">{(progress.error * 100).toFixed(4)}%</span></span>
-			</div>
-		</div>
-	{/if}
 
 	<!-- Save toggle -->
 	<div class="flex items-center justify-between p-3 rounded-xl bg-[var(--color-graphite)]/30 border border-white/[0.02]">
@@ -1568,9 +1352,8 @@
 	</div>
 
 	<!-- State Indicator -->
-	{#if !progress}
-		<div class="flex items-center justify-center gap-2 py-2">
-			{#if optimizerState === 'idle'}
+	<div class="flex items-center justify-center gap-2 py-2">
+		{#if optimizerState === 'idle'}
 				<span class="w-2 h-2 rounded-full bg-[var(--color-mist)]/50"></span>
 				<span class="text-xs font-mono text-[var(--color-mist)]">Ready</span>
 			{:else if optimizerState === 'running'}
@@ -1584,7 +1367,6 @@
 				<span class="text-xs font-mono text-[var(--color-coral)]">Error</span>
 			{/if}
 		</div>
-	{/if}
 
 	<!-- Optimize Button -->
 	<button

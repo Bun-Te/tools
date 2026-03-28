@@ -195,6 +195,8 @@ func TestConfigGenerator_B64RoundTrip(t *testing.T) {
 			expectedType = 1
 		case ConstraintAuto:
 			expectedType = 2
+		case ConstraintMaxWinFreq:
+			expectedType = 3
 		}
 		if typeInt != expectedType {
 			t.Errorf("Bucket %d: type mismatch: %d vs %d", i, typeInt, expectedType)

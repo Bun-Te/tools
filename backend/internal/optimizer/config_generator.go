@@ -62,7 +62,7 @@ type ShortConfig struct {
 	B [][]any   `json:"b"` // [[min, max, type(0/1/2), value], ...]
 }
 
-// ConfigGenerator generates optimal bucket configurations
+// ConfigGenerator generates optimal bucket configurations using Power Law distribution
 type ConfigGenerator struct {
 	analyzer *ModeAnalyzer
 }
@@ -102,25 +102,33 @@ func (g *ConfigGenerator) GenerateAllProfiles(targetRTP, maxWin float64) *Config
 	return response
 }
 
-// GenerateConfig generates a config for a specific profile
+// GenerateConfig generates a config for a specific profile using Power Law
 func (g *ConfigGenerator) GenerateConfig(targetRTP, maxWin float64, profile PlayerProfile) *GeneratedConfig {
-	// Define bucket boundaries based on maxWin
+	// 1. Determine Target Hit Rate based on Profile
+	// User requirement: hit rate N cannot exceed 18 (P_win >= 1/18)
+	var targetHitRate float64
+	switch profile {
+	case ProfileLowVol:
+		targetHitRate = 5 // 1 in 5 (very frequent)
+	case ProfileMediumVol:
+		targetHitRate = 10 // 1 in 10
+	case ProfileHighVol:
+		targetHitRate = 18 // 1 in 18 (the maximum allowed N)
+	default:
+		targetHitRate = 10
+	}
+
+	// 2. Define bucket boundaries based on maxWin
 	boundaries := g.calculateBucketBoundaries(maxWin)
 
-	// Get RTP distribution for profile
-	rtpDistribution := g.getRTPDistribution(profile, len(boundaries)-1)
-
-	// Generate buckets
-	buckets := g.generateBuckets(boundaries, rtpDistribution, targetRTP, profile)
-
-	// IMPORTANT: Always ensure maxwin is a separate bucket
-	buckets = ensureMaxWinBucket(buckets, maxWin)
+	// 3. Generate Power Law distributed buckets
+	buckets := g.generatePowerLawBuckets(boundaries, targetRTP, targetHitRate)
 
 	// Calculate b64 config
 	b64Config := g.toB64Config(targetRTP, buckets)
 
 	// Calculate stats
-	stats := g.calculateStats(buckets, rtpDistribution, targetRTP)
+	stats := g.calculateStats(buckets, targetRTP)
 
 	return &GeneratedConfig{
 		Profile:     profile,
@@ -136,209 +144,112 @@ func (g *ConfigGenerator) GenerateConfig(targetRTP, maxWin float64, profile Play
 
 // calculateBucketBoundaries determines bucket ranges based on max win
 func (g *ConfigGenerator) calculateBucketBoundaries(maxWin float64) []float64 {
-	// Standard boundaries, adjusted for max win
-	boundaries := []float64{0}
-
-	// Sub-1x (partial wins)
-	if maxWin >= 1 {
-		boundaries = append(boundaries, 1)
+	baseBoundaries := []float64{0, 1, 2, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000}
+	
+	var valid []float64
+	for _, b := range baseBoundaries {
+		if b < maxWin {
+			valid = append(valid, b)
+		}
 	}
-
-	// 1-2x (break-even zone)
-	if maxWin >= 2 {
-		boundaries = append(boundaries, 2)
+	
+	epsilon := maxWin * 0.001
+	if epsilon < 0.01 {
+		epsilon = 0.01
 	}
-
-	// 2-5x (small wins)
-	if maxWin >= 5 {
-		boundaries = append(boundaries, 5)
+	maxWinThreshold := maxWin - epsilon
+	
+	if len(valid) == 0 || valid[len(valid)-1] < maxWinThreshold {
+		valid = append(valid, maxWinThreshold)
 	}
+	valid = append(valid, maxWin + 0.01) // Ensure maxWin is fully enclosed
 
-	// 5-10x (medium-small)
-	if maxWin >= 10 {
-		boundaries = append(boundaries, 10)
-	}
-
-	// 10-25x (medium)
-	if maxWin >= 25 {
-		boundaries = append(boundaries, 25)
-	}
-
-	// 25-50x (medium-large)
-	if maxWin >= 50 {
-		boundaries = append(boundaries, 50)
-	}
-
-	// 50-100x (large)
-	if maxWin >= 100 {
-		boundaries = append(boundaries, 100)
-	}
-
-	// 100-250x (very large)
-	if maxWin >= 250 {
-		boundaries = append(boundaries, 250)
-	}
-
-	// 250-500x (huge)
-	if maxWin >= 500 {
-		boundaries = append(boundaries, 500)
-	}
-
-	// 500-1000x (massive)
-	if maxWin >= 1000 {
-		boundaries = append(boundaries, 1000)
-	}
-
-	// 1000-2500x (epic)
-	if maxWin >= 2500 {
-		boundaries = append(boundaries, 2500)
-	}
-
-	// 2500-5000x (legendary)
-	if maxWin >= 5000 {
-		boundaries = append(boundaries, 5000)
-	}
-
-	// 5000+ (max)
-	if maxWin > 5000 {
-		boundaries = append(boundaries, maxWin)
-	} else if len(boundaries) > 0 && boundaries[len(boundaries)-1] < maxWin {
-		boundaries = append(boundaries, maxWin)
-	}
-
-	return boundaries
+	return valid
 }
 
-// getRTPDistribution returns RTP allocation percentages for each bucket
-// Returns slice where sum = 100 (representing % of total RTP)
-func (g *ConfigGenerator) getRTPDistribution(profile PlayerProfile, numBuckets int) []float64 {
-	if numBuckets <= 0 {
-		return []float64{}
-	}
-
-	// Base distributions for different bucket counts
-	// Format: distribution for [sub1x, 1-2x, 2-5x, 5-10x, 10-25x, 25-50x, 50-100x, 100-250x, 250-500x, 500-1000x, 1000-2500x, 2500-5000x, 5000+]
-
-	var baseDistribution []float64
-
-	switch profile {
-	case ProfileLowVol:
-		// Heavy on small wins
-		baseDistribution = []float64{35, 25, 15, 10, 7, 4, 2, 1, 0.5, 0.3, 0.1, 0.07, 0.03}
-
-	case ProfileMediumVol:
-		// Balanced distribution
-		baseDistribution = []float64{20, 18, 15, 12, 10, 8, 6, 4, 3, 2, 1, 0.7, 0.3}
-
-	case ProfileHighVol:
-		// Heavy on big wins
-		baseDistribution = []float64{10, 8, 8, 8, 10, 12, 14, 12, 8, 5, 3, 1.5, 0.5}
-
-	default:
-		// Default to medium volatility
-		baseDistribution = []float64{20, 18, 15, 12, 10, 8, 6, 4, 3, 2, 1, 0.7, 0.3}
-	}
-
-	// Trim to actual number of buckets
-	if numBuckets < len(baseDistribution) {
-		baseDistribution = baseDistribution[:numBuckets]
-	}
-
-	// Normalize to 100%
-	sum := 0.0
-	for _, v := range baseDistribution {
-		sum += v
-	}
-
-	result := make([]float64, len(baseDistribution))
-	for i, v := range baseDistribution {
-		result[i] = v / sum * 100
-	}
-
-	return result
-}
-
-// generateBuckets creates bucket configs from boundaries and RTP distribution
-func (g *ConfigGenerator) generateBuckets(boundaries []float64, rtpDist []float64, targetRTP float64, profile PlayerProfile) []BucketConfig {
+// generatePowerLawBuckets creates bucket configs using a Bisection Search on the Power Law exponent
+func (g *ConfigGenerator) generatePowerLawBuckets(boundaries []float64, targetRTP, targetHitRate float64) []BucketConfig {
 	numBuckets := len(boundaries) - 1
-	if numBuckets <= 0 || len(rtpDist) != numBuckets {
+	if numBuckets <= 0 {
 		return []BucketConfig{}
 	}
 
-	buckets := make([]BucketConfig, numBuckets)
-
+	x := make([]float64, numBuckets)
 	for i := 0; i < numBuckets; i++ {
-		minPayout := boundaries[i]
-		maxPayout := boundaries[i+1]
-		rtpPercent := rtpDist[i]
-
-		// Calculate average payout for this bucket
-		avgPayout := (minPayout + maxPayout) / 2
-		if avgPayout <= 0 {
-			avgPayout = maxPayout / 2
+		// Use harmonic mean or arithmetic mean for the bucket center
+		// Arithmetic mean works fine for defining the power law curve
+		x[i] = (boundaries[i] + boundaries[i+1]) / 2.0
+		if x[i] <= 0 {
+			x[i] = 0.5
 		}
+	}
 
-		// Calculate frequency from RTP contribution
-		// RTP contribution = (rtpPercent/100) * targetRTP
-		// frequency = 1 / probability
-		// probability = RTP_contribution / avgPayout
+	// We want to find alpha such that:
+	// sum(x_i^(1-alpha)) / sum(x_i^(-alpha)) = TargetRTP * TargetHitRate
+	targetRatio := targetRTP * targetHitRate
 
-		rtpContribution := (rtpPercent / 100) * targetRTP
-		probability := rtpContribution / avgPayout
-		frequency := 1.0 / probability
+	lowAlpha := -10.0
+	highAlpha := 10.0
 
-		// Determine constraint type based on profile and bucket position
-		bucket := BucketConfig{
-			MinPayout: minPayout,
-			MaxPayout: maxPayout,
+	calcRatio := func(alpha float64) float64 {
+		sumNum := 0.0
+		sumDen := 0.0
+		for _, xi := range x {
+			sumNum += math.Pow(xi, 1.0-alpha)
+			sumDen += math.Pow(xi, -alpha)
 		}
+		if sumDen == 0 {
+			return 0
+		}
+		return sumNum / sumDen
+	}
 
-		// Use appropriate constraint type
-		if g.shouldUseAuto(profile, i, numBuckets) {
-			bucket.Type = ConstraintAuto
-			bucket.AutoExponent = g.getExponent(profile)
-		} else if frequency < 200 {
-			// Low frequency = use frequency constraint
-			bucket.Type = ConstraintFrequency
-			bucket.Frequency = math.Round(frequency*10) / 10 // Round to 1 decimal
-			if bucket.Frequency < 1 {
-				bucket.Frequency = 1
-			}
+	// Bisection search for alpha
+	for i := 0; i < 60; i++ {
+		mid := (lowAlpha + highAlpha) / 2.0
+		if calcRatio(mid) > targetRatio {
+			lowAlpha = mid // calcRatio is strictly decreasing w.r.t alpha
 		} else {
-			// High frequency = use RTP percent constraint
-			bucket.Type = ConstraintRTPPercent
-			bucket.RTPPercent = math.Round(rtpPercent*100) / 100 // Round to 2 decimals
-			if bucket.RTPPercent < 0.01 {
-				bucket.RTPPercent = 0.01
-			}
+			highAlpha = mid
+		}
+	}
+
+	bestAlpha := (lowAlpha + highAlpha) / 2.0
+
+	// Calculate Probabilities P_i
+	sumDen := 0.0
+	for _, xi := range x {
+		sumDen += math.Pow(xi, -bestAlpha)
+	}
+
+	buckets := make([]BucketConfig, numBuckets)
+	for i := 0; i < numBuckets; i++ {
+		prob := (1.0 / targetHitRate) * (math.Pow(x[i], -bestAlpha) / sumDen)
+		rtpContrib := prob * x[i]
+		rtpPercent := (rtpContrib / targetRTP) * 100.0
+
+		isMaxWin := i == numBuckets-1
+
+		b := BucketConfig{
+			MinPayout: boundaries[i],
+			MaxPayout: boundaries[i+1],
 		}
 
-		buckets[i] = bucket
+		if isMaxWin {
+			b.Name = "maxwin"
+			b.IsMaxWinBucket = true
+			b.Type = ConstraintMaxWinFreq
+			b.MaxWinFrequency = math.Round(1.0 / prob)
+		} else {
+			b.Name = fmt.Sprintf("bucket_%.2f_%.2f", boundaries[i], boundaries[i+1])
+			b.Type = ConstraintRTPPercent
+			b.RTPPercent = math.Round(rtpPercent*1000) / 1000 // Keep precision
+		}
+
+		buckets[i] = b
 	}
 
 	return buckets
-}
-
-// shouldUseAuto determines if a bucket should use AUTO constraint
-func (g *ConfigGenerator) shouldUseAuto(profile PlayerProfile, bucketIdx, totalBuckets int) bool {
-	// Last bucket is good for AUTO in high volatility
-	if bucketIdx == totalBuckets-1 {
-		return profile == ProfileHighVol
-	}
-
-	return false
-}
-
-// getExponent returns AUTO exponent for profile
-func (g *ConfigGenerator) getExponent(profile PlayerProfile) float64 {
-	switch profile {
-	case ProfileLowVol:
-		return 1.5 // Steeper = lower high payouts
-	case ProfileHighVol:
-		return 0.5 // Flatter = more high payouts
-	default:
-		return 1.0
-	}
 }
 
 // toB64Config converts buckets to base64 encoded short config
@@ -381,15 +292,21 @@ func (g *ConfigGenerator) toB64Config(targetRTP float64, buckets []BucketConfig)
 }
 
 // calculateStats computes statistics for the config
-func (g *ConfigGenerator) calculateStats(buckets []BucketConfig, rtpDist []float64, targetRTP float64) ConfigStats {
+func (g *ConfigGenerator) calculateStats(buckets []BucketConfig, targetRTP float64) ConfigStats {
 	rtpDistribution := make(map[string]float64)
 	var totalWinProb float64
 	var maxWinFreq float64
 
 	for i, b := range buckets {
-		rangeKey := fmt.Sprintf("%.0f-%.0f", b.MinPayout, b.MaxPayout)
-		if i < len(rtpDist) {
-			rtpDistribution[rangeKey] = math.Round(rtpDist[i]*100) / 100
+		rangeKey := fmt.Sprintf("%.2f-%.2f", b.MinPayout, b.MaxPayout)
+		if b.Type == ConstraintRTPPercent {
+			rtpDistribution[rangeKey] = math.Round(b.RTPPercent*100) / 100
+		} else if b.Type == ConstraintMaxWinFreq {
+			// approximate RTP
+			avgPayout := (b.MinPayout + b.MaxPayout) / 2
+			prob := 1.0 / b.MaxWinFrequency
+			rtpContrib := prob * avgPayout
+			rtpDistribution[rangeKey] = math.Round((rtpContrib/targetRTP)*10000) / 100
 		}
 
 		// Calculate win probability for this bucket
@@ -405,6 +322,8 @@ func (g *ConfigGenerator) calculateStats(buckets []BucketConfig, rtpDist []float
 		case ConstraintRTPPercent:
 			rtpContrib := (b.RTPPercent / 100) * targetRTP
 			prob = rtpContrib / avgPayout
+		case ConstraintMaxWinFreq:
+			prob = 1.0 / b.MaxWinFrequency
 		case ConstraintAuto:
 			// Estimate for AUTO - will be calculated properly during optimization
 			rtpEstimate := 0.05 * targetRTP // Assume 5% of RTP
@@ -526,8 +445,32 @@ func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin 
 		actualMaxWin = maxWin
 	}
 
-	// Generate buckets from analysis
-	buckets := g.analyzer.CreateBucketsFromAnalysis(analysis, effectiveRTP, profile)
+	// Determine Target Hit Rate based on Profile
+	var targetHitRate float64
+	switch profile {
+	case ProfileLowVol:
+		targetHitRate = 5 // 1 in 5 (very frequent)
+	case ProfileMediumVol:
+		targetHitRate = 10 // 1 in 10
+	case ProfileHighVol:
+		targetHitRate = 18 // 1 in 18 (the maximum allowed N)
+	default:
+		targetHitRate = 10
+	}
+
+	// Extract boundaries from analysis recommendations
+	var boundaries []float64
+	if len(analysis.RecommendedBuckets) > 0 {
+		boundaries = append(boundaries, analysis.RecommendedBuckets[0].MinPayout)
+		for _, rec := range analysis.RecommendedBuckets {
+			boundaries = append(boundaries, rec.MaxPayout)
+		}
+	} else {
+		boundaries = g.calculateBucketBoundaries(actualMaxWin)
+	}
+
+	// Generate Power Law distributed buckets
+	buckets := g.generatePowerLawBuckets(boundaries, effectiveRTP, targetHitRate)
 
 	// Fallback if no buckets generated
 	if len(buckets) == 0 {
@@ -538,16 +481,7 @@ func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin 
 	b64Config := g.toB64Config(effectiveRTP, buckets)
 
 	// Calculate stats from generated buckets
-	rtpDist := make([]float64, len(buckets))
-	for i, b := range buckets {
-		if b.Type == ConstraintRTPPercent {
-			rtpDist[i] = b.RTPPercent
-		} else {
-			// Estimate for other types
-			rtpDist[i] = 100.0 / float64(len(buckets))
-		}
-	}
-	stats := g.calculateStats(buckets, rtpDist, effectiveRTP)
+	stats := g.calculateStats(buckets, effectiveRTP)
 
 	// Build feasibility info
 	feasibility := &FeasibilityInfo{

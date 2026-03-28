@@ -350,17 +350,30 @@ func autoSelectOutcomesToVoid(
 }
 
 // calculateMinAchievableRTP calculates the minimum RTP possible with min weights
-// This assumes each outcome has minimum weight, giving uniform distribution
-func calculateMinAchievableRTP(payouts []float64) float64 {
+// This assumes each win outcome has minimum weight, and loss has maximum possible weight
+func calculateMinAchievableRTP(payouts []float64, minWeight uint64) float64 {
 	if len(payouts) == 0 {
 		return 0
 	}
-	// With uniform weights, RTP = sum(payouts) / n
-	sum := 0.0
+	
+	var winPayoutSum float64
+	var winCount int
 	for _, p := range payouts {
-		sum += p
+		if p > 0 {
+			winPayoutSum += p
+			winCount++
+		}
 	}
-	return sum / float64(len(payouts))
+
+	if winCount == 0 {
+		return 0
+	}
+
+	// Using a large realistic limit for loss weight to avoid uint64 overflow
+	const maxLossWeight float64 = 1e15 
+	winWeightSum := float64(winCount) * float64(minWeight)
+	
+	return (winPayoutSum * float64(minWeight)) / (winWeightSum + maxLossWeight)
 }
 
 // OptimizeTable optimizes a lookup table using bucket constraints
@@ -415,7 +428,7 @@ func (o *BucketOptimizer) OptimizeTable(table *stakergs.LookupTable) (*BucketOpt
 	var autoVoidedRTP float64
 
 	if o.config.EnableAutoVoiding {
-		minRTP := calculateMinAchievableRTP(payouts)
+		minRTP := calculateMinAchievableRTP(payouts, o.config.MinWeight)
 		autoVoidedIndices, autoVoidedOutcomes = autoSelectOutcomesToVoid(payouts, simIDs, o.config.TargetRTP, minRTP)
 		// Calculate total voided RTP
 		for _, vo := range autoVoidedOutcomes {
@@ -473,20 +486,48 @@ func (o *BucketOptimizer) OptimizeTable(table *stakergs.LookupTable) (*BucketOpt
 	warnings = append(warnings, probWarnings...)
 
 	// Calculate weights (voided outcomes will have weight 0)
-	newWeights, bucketResults, lossResult := o.calculateWeightsWithVoiding(payouts, assignments, lossIndices, voidedOutcomeIndices)
+	newWeights, bucketResults, lossResult, weightWarnings := o.calculateWeightsWithVoiding(payouts, assignments, lossIndices, voidedOutcomeIndices)
+	if len(weightWarnings) > 0 {
+		warnings = append(warnings, weightWarnings...)
+	}
 
 	// Calculate final RTP
 	finalRTP := calculateRTPFromWeights(newWeights, payouts)
 	converged := math.Abs(finalRTP-o.config.TargetRTP) <= o.config.RTPTolerance
 
 	// Fine-tune if not converged
-	if !converged && len(lossIndices) > 0 {
-		newWeights = o.fineTuneLossWeightWithVoiding(newWeights, payouts, lossIndices, voidedOutcomeIndices)
+	if !converged {
+		newWeights = o.rebalanceWinsToTargetRTP(newWeights, payouts, o.config.TargetRTP, o.config.MinWeight)
 		finalRTP = calculateRTPFromWeights(newWeights, payouts)
 		converged = math.Abs(finalRTP-o.config.TargetRTP) <= o.config.RTPTolerance
 
-		// Recalculate loss result
-		lossResult = o.calculateLossResult(newWeights, payouts, lossIndices)
+		// Recalculate bucket results and loss result since actual weights changed
+		totalWeight := sumUint64(newWeights)
+		for i := range bucketResults {
+			var bucketWeight uint64
+			var bucketRTP float64
+			for _, idx := range assignments[i].outcomeIndices {
+				bucketWeight += newWeights[idx]
+				if totalWeight > 0 {
+					prob := float64(newWeights[idx]) / float64(totalWeight)
+					bucketRTP += prob * payouts[idx]
+				}
+			}
+			
+			bucketResults[i].TotalWeight = bucketWeight
+			if bucketWeight > 0 && totalWeight > 0 {
+				bucketResults[i].ActualProbability = float64(bucketWeight) / float64(totalWeight)
+				bucketResults[i].ActualFrequency = 1.0 / bucketResults[i].ActualProbability
+			} else {
+				bucketResults[i].ActualProbability = 0
+				bucketResults[i].ActualFrequency = 0
+			}
+			bucketResults[i].RTPContribution = bucketRTP * 100
+		}
+
+		if len(lossIndices) > 0 {
+			lossResult = o.calculateLossResult(newWeights, payouts, lossIndices)
+		}
 	}
 
 	// Add warning if final RTP is way off target
@@ -632,6 +673,21 @@ func (o *BucketOptimizer) calculateTargetProbabilities(assignments []bucketAssig
 			continue
 		}
 
+		// Calculate harmonic mean payout since we distribute weights inversely proportional to payout
+		var invSum float64
+		var validCount int
+		for _, p := range bucket.payouts {
+			if p > 0 {
+				invSum += 1.0 / p
+				validCount++
+			}
+		}
+		
+		effectiveAvgPayout := bucket.avgPayout
+		if invSum > 0 && validCount > 0 {
+			effectiveAvgPayout = float64(validCount) / invSum
+		}
+
 		switch bucket.config.Type {
 		case ConstraintFrequency:
 			// Frequency: 1 in N spins = probability of 1/N
@@ -639,16 +695,14 @@ func (o *BucketOptimizer) calculateTargetProbabilities(assignments []bucketAssig
 				bucket.targetProb = 1.0 / bucket.config.Frequency
 			}
 			// Calculate implied RTP contribution
-			bucket.rtpContribution = bucket.targetProb * bucket.avgPayout
+			bucket.rtpContribution = bucket.targetProb * effectiveAvgPayout
 			usedRTP += bucket.rtpContribution
 
 		case ConstraintRTPPercent:
 			// RTP%: X% of target RTP
-			// RTP contribution = rtpPercent/100 * targetRTP
-			// probability = contribution / avgPayout
-			if bucket.avgPayout > 0 && bucket.config.RTPPercent > 0 {
+			if effectiveAvgPayout > 0 && bucket.config.RTPPercent > 0 {
 				bucket.rtpContribution = (bucket.config.RTPPercent / 100.0) * o.config.TargetRTP
-				bucket.targetProb = bucket.rtpContribution / bucket.avgPayout
+				bucket.targetProb = bucket.rtpContribution / effectiveAvgPayout
 				usedRTP += bucket.rtpContribution
 			}
 
@@ -784,17 +838,39 @@ func (o *BucketOptimizer) calculateWeights(payouts []float64, assignments []buck
 				actualTotalWeight += w
 			}
 		} else {
-			// Non-auto bucket: distribute evenly
+			// Non-auto bucket: distribute inversely proportional to payout
 			bucketTotalWeight := uint64(bucket.targetProb * float64(baseWeight))
-			weightPerOutcome := bucketTotalWeight / uint64(len(bucket.outcomeIndices))
-
-			if weightPerOutcome < o.config.MinWeight {
-				weightPerOutcome = o.config.MinWeight
+			
+			var invSum float64
+			for _, idx := range bucket.outcomeIndices {
+				if payouts[idx] > 0 {
+					invSum += 1.0 / payouts[idx]
+				}
 			}
 
-			for _, idx := range bucket.outcomeIndices {
-				weights[idx] = weightPerOutcome
-				actualTotalWeight += weightPerOutcome
+			if invSum > 0 {
+				for _, idx := range bucket.outcomeIndices {
+					if payouts[idx] <= 0 {
+						continue
+					}
+					fraction := (1.0 / payouts[idx]) / invSum
+					w := uint64(float64(bucketTotalWeight) * fraction)
+					
+					if w < o.config.MinWeight {
+						w = o.config.MinWeight
+					}
+					weights[idx] = w
+					actualTotalWeight += w
+				}
+			} else {
+				weightPerOutcome := bucketTotalWeight / uint64(len(bucket.outcomeIndices))
+				if weightPerOutcome < o.config.MinWeight {
+					weightPerOutcome = o.config.MinWeight
+				}
+				for _, idx := range bucket.outcomeIndices {
+					weights[idx] = weightPerOutcome
+					actualTotalWeight += weightPerOutcome
+				}
 			}
 		}
 
@@ -848,17 +924,30 @@ func (o *BucketOptimizer) calculateWeights(payouts []float64, assignments []buck
 	// weightedPayoutSum / (totalWinWeight + lossWeight) = targetRTP
 	// lossWeight = weightedPayoutSum / targetRTP - totalWinWeight
 
-	var weightedPayoutSum float64
+	// Calculate loss weight strictly based on Hit Rate (totalWinProb)
 	var totalWinWeight uint64
 	for i, w := range weights {
 		if payouts[i] > 0 {
-			weightedPayoutSum += float64(w) * payouts[i]
 			totalWinWeight += w
 		}
 	}
 
-	// Required loss weight
-	requiredLossWeight := weightedPayoutSum/o.config.TargetRTP - float64(totalWinWeight)
+	// ENFORCE MINIMUM HIT RATE (1 in 18)
+	// The hit rate N cannot be greater than 18 (i.e. probability cannot be less than 1/18).
+	minWinProb := 1.0 / 18.0
+	if totalWinProb < minWinProb-1e-9 {
+		warnings = append(warnings, fmt.Sprintf("Target hit rate (1:%.2f) is less frequent than the allowed minimum (1:18). Hit rate adjusted to 1:18.", 1.0/totalWinProb))
+		totalWinProb = minWinProb
+	}
+
+	var requiredLossWeight float64
+	if totalWinProb < 1.0 && totalWinProb > 0 {
+		lossProb := 1.0 - totalWinProb
+		requiredLossWeight = float64(totalWinWeight) * (lossProb / totalWinProb)
+	} else {
+		requiredLossWeight = float64(o.config.MinWeight)
+	}
+
 	if requiredLossWeight < float64(o.config.MinWeight) {
 		requiredLossWeight = float64(o.config.MinWeight)
 	}
@@ -913,37 +1002,142 @@ func (o *BucketOptimizer) calculateWeights(payouts []float64, assignments []buck
 	return weights, bucketResults, lossResult, warnings
 }
 
-// fineTuneLossWeight adjusts loss weight to hit target RTP precisely
-func (o *BucketOptimizer) fineTuneLossWeight(weights []uint64, payouts []float64, lossIndices []int) []uint64 {
+// rebalanceWinsToTargetRTP uses exponential tilt and bisection search to smoothly
+// rebalance win weights to hit the exact target RTP while keeping loss weight constant.
+func (o *BucketOptimizer) rebalanceWinsToTargetRTP(weights []uint64, payouts []float64, targetRTP float64, minWeight uint64) []uint64 {
 	result := make([]uint64, len(weights))
 	copy(result, weights)
 
-	// Calculate weighted payout sum for wins
-	var weightedPayoutSum float64
-	var totalWinWeight uint64
-	for i, p := range payouts {
-		if p > 0 {
-			weightedPayoutSum += float64(result[i]) * p
-			totalWinWeight += result[i]
+	// Identify fixed indices that shouldn't be tilted (e.g. Max Win freq targets)
+	fixedIndices := make(map[int]bool)
+	if o.config.GlobalMaxWinFreq > 0 {
+		maxPayoutIdx := -1
+		maxPayout := 0.0
+		for i, p := range payouts {
+			if p > maxPayout {
+				maxPayout = p
+				maxPayoutIdx = i
+			}
+		}
+		if maxPayoutIdx >= 0 {
+			fixedIndices[maxPayoutIdx] = true
 		}
 	}
 
-	// Required loss weight for target RTP
-	requiredLossWeight := weightedPayoutSum/o.config.TargetRTP - float64(totalWinWeight)
-	if requiredLossWeight < float64(len(lossIndices)) {
-		requiredLossWeight = float64(len(lossIndices))
+	for _, bucket := range o.config.Buckets {
+		if bucket.Type == ConstraintMaxWinFreq && bucket.MaxWinFrequency > 0 {
+			// Find max payout in this range
+			maxP := -1.0
+			maxI := -1
+			for i, p := range payouts {
+				if p >= bucket.MinPayout && (p < bucket.MaxPayout || (p <= bucket.MaxPayout && bucket.MaxPayout >= payouts[len(payouts)-1])) {
+					if p > maxP {
+						maxP = p
+						maxI = i
+					}
+				}
+			}
+			if maxI >= 0 {
+				fixedIndices[maxI] = true
+			}
+		}
 	}
 
-	// Distribute among loss outcomes
-	lossWeightPerOutcome := uint64(math.Round(requiredLossWeight / float64(len(lossIndices))))
-	if lossWeightPerOutcome < o.config.MinWeight {
-		lossWeightPerOutcome = o.config.MinWeight
+	var winIndices []int
+	var originalTotalWinWeight uint64
+
+	for i, p := range payouts {
+		if p > 0 && !fixedIndices[i] {
+			if result[i] > 0 { // ignore voided
+				winIndices = append(winIndices, i)
+				originalTotalWinWeight += result[i]
+			}
+		}
 	}
 
-	for _, idx := range lossIndices {
-		result[idx] = lossWeightPerOutcome
+	if len(winIndices) == 0 {
+		return result
 	}
 
+	calculateRTPWithAlpha := func(alpha float64) (float64, []uint64) {
+		tempWeights := make([]uint64, len(weights))
+		copy(tempWeights, weights)
+		
+		var tiltedSum float64
+		tilted := make([]float64, len(payouts))
+		for _, i := range winIndices {
+			t := float64(weights[i]) * math.Exp(alpha*payouts[i])
+			tilted[i] = t
+			tiltedSum += t
+		}
+		
+		if tiltedSum == 0 || math.IsNaN(tiltedSum) || math.IsInf(tiltedSum, 0) {
+			return calculateRTPFromWeights(tempWeights, payouts), tempWeights
+		}
+		
+		for _, i := range winIndices {
+			w := uint64(math.Round(tilted[i] * float64(originalTotalWinWeight) / tiltedSum))
+			if w < minWeight {
+				w = minWeight
+			}
+			tempWeights[i] = w
+		}
+		
+		return calculateRTPFromWeights(tempWeights, payouts), tempWeights
+	}
+
+	lowAlpha := -1.0
+	highAlpha := 1.0
+	
+	rtpLow, _ := calculateRTPWithAlpha(lowAlpha)
+	rtpHigh, _ := calculateRTPWithAlpha(highAlpha)
+	
+	for i := 0; i < 10; i++ {
+		if rtpLow > targetRTP {
+			lowAlpha *= 2.0
+			rtpLow, _ = calculateRTPWithAlpha(lowAlpha)
+		} else {
+			break
+		}
+	}
+	
+	for i := 0; i < 10; i++ {
+		if rtpHigh < targetRTP {
+			highAlpha *= 2.0
+			rtpHigh, _ = calculateRTPWithAlpha(highAlpha)
+		} else {
+			break
+		}
+	}
+	
+	var bestWeights []uint64
+	bestError := math.MaxFloat64
+	
+	for iter := 0; iter < 50; iter++ {
+		midAlpha := (lowAlpha + highAlpha) / 2.0
+		rtp, w := calculateRTPWithAlpha(midAlpha)
+		err := math.Abs(rtp - targetRTP)
+		
+		if err < bestError {
+			bestError = err
+			bestWeights = w
+		}
+		
+		if err <= o.config.RTPTolerance {
+			break
+		}
+		
+		if rtp > targetRTP {
+			highAlpha = midAlpha
+		} else {
+			lowAlpha = midAlpha
+		}
+	}
+	
+	if bestWeights != nil {
+		return bestWeights
+	}
+	
 	return result
 }
 
@@ -1001,9 +1195,10 @@ func (o *BucketOptimizer) buildOutcomeDetails(table *stakergs.LookupTable, payou
 }
 
 // calculateWeightsWithVoiding converts probabilities to weights, setting voided outcomes to weight 0
-func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignments []bucketAssignment, lossIndices []int, voidedOutcomeIndices []int) ([]uint64, []BucketResult, *BucketResult) {
+func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignments []bucketAssignment, lossIndices []int, voidedOutcomeIndices []int) ([]uint64, []BucketResult, *BucketResult, []string) {
 	n := len(payouts)
 	weights := make([]uint64, n)
+	var warnings []string
 
 	// Create set of voided outcome indices
 	voidedSet := make(map[int]bool)
@@ -1043,29 +1238,52 @@ func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignm
 				actualTotalWeight += w
 			}
 		} else {
-			// Non-auto bucket: distribute evenly (excluding voided)
+			// Non-auto bucket: distribute inversely proportional to payout (excluding voided)
+			bucketTotalWeight := uint64(bucket.targetProb * float64(baseWeight))
+			
+			var invSum float64
 			nonVoidedCount := 0
 			for _, idx := range bucket.outcomeIndices {
 				if !voidedSet[idx] {
 					nonVoidedCount++
+					if payouts[idx] > 0 {
+						invSum += 1.0 / payouts[idx]
+					}
 				}
 			}
 
 			if nonVoidedCount > 0 {
-				bucketTotalWeight := uint64(bucket.targetProb * float64(baseWeight))
-				weightPerOutcome := bucketTotalWeight / uint64(nonVoidedCount)
-
-				if weightPerOutcome < o.config.MinWeight {
-					weightPerOutcome = o.config.MinWeight
-				}
-
-				for _, idx := range bucket.outcomeIndices {
-					if voidedSet[idx] {
-						weights[idx] = 0
-						continue
+				if invSum > 0 {
+					for _, idx := range bucket.outcomeIndices {
+						if voidedSet[idx] {
+							weights[idx] = 0
+							continue
+						}
+						if payouts[idx] <= 0 {
+							continue
+						}
+						fraction := (1.0 / payouts[idx]) / invSum
+						w := uint64(float64(bucketTotalWeight) * fraction)
+						
+						if w < o.config.MinWeight {
+							w = o.config.MinWeight
+						}
+						weights[idx] = w
+						actualTotalWeight += w
 					}
-					weights[idx] = weightPerOutcome
-					actualTotalWeight += weightPerOutcome
+				} else {
+					weightPerOutcome := bucketTotalWeight / uint64(nonVoidedCount)
+					if weightPerOutcome < o.config.MinWeight {
+						weightPerOutcome = o.config.MinWeight
+					}
+					for _, idx := range bucket.outcomeIndices {
+						if voidedSet[idx] {
+							weights[idx] = 0
+							continue
+						}
+						weights[idx] = weightPerOutcome
+						actualTotalWeight += weightPerOutcome
+					}
 				}
 			}
 		}
@@ -1092,23 +1310,93 @@ func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignm
 		})
 	}
 
+	// Apply MaxWinFrequency overrides
+	for i, bucket := range assignments {
+		if bucket.config.Type == ConstraintMaxWinFreq && bucket.config.MaxWinFrequency > 0 && len(bucket.outcomeIndices) > 0 {
+			// Find max payout in this bucket
+			maxPayoutIdx := bucket.outcomeIndices[0]
+			maxPayout := payouts[maxPayoutIdx]
+			for _, idx := range bucket.outcomeIndices {
+				if payouts[idx] > maxPayout {
+					maxPayout = payouts[idx]
+					maxPayoutIdx = idx
+				}
+			}
+
+			// Calculate required weight (assuming totalWeight will be around baseWeight initially)
+			// A better approach is to use baseWeight
+			targetProb := 1.0 / bucket.config.MaxWinFrequency
+			requiredWeight := uint64(targetProb * float64(baseWeight))
+			if requiredWeight < o.config.MinWeight {
+				requiredWeight = o.config.MinWeight
+			}
+
+			oldW := weights[maxPayoutIdx]
+			weights[maxPayoutIdx] = requiredWeight
+			bucketResults[i].TotalWeight = bucketResults[i].TotalWeight - oldW + requiredWeight
+		}
+	}
+
+	if o.config.GlobalMaxWinFreq > 0 {
+		maxPayoutIdx := -1
+		maxPayout := 0.0
+		for i, p := range payouts {
+			if p > maxPayout {
+				maxPayout = p
+				maxPayoutIdx = i
+			}
+		}
+
+		if maxPayoutIdx >= 0 {
+			targetProb := 1.0 / o.config.GlobalMaxWinFreq
+			requiredWeight := uint64(targetProb * float64(baseWeight))
+			if requiredWeight < o.config.MinWeight {
+				requiredWeight = o.config.MinWeight
+			}
+			
+			oldW := weights[maxPayoutIdx]
+			weights[maxPayoutIdx] = requiredWeight
+			
+			// Adjust corresponding bucket's TotalWeight
+			for i, bucket := range assignments {
+				for _, idx := range bucket.outcomeIndices {
+					if idx == maxPayoutIdx {
+						bucketResults[i].TotalWeight = bucketResults[i].TotalWeight - oldW + requiredWeight
+					}
+				}
+			}
+		}
+	}
+
 	// Set voided outcomes to weight 0
 	for _, idx := range voidedOutcomeIndices {
 		weights[idx] = 0
 	}
 
-	// Calculate loss weight (same as before)
-	var weightedPayoutSum float64
+	// Calculate loss weight strictly based on Hit Rate (totalWinProb)
 	var totalWinWeight uint64
 	for i, w := range weights {
 		if payouts[i] > 0 && w > 0 {
-			weightedPayoutSum += float64(w) * payouts[i]
 			totalWinWeight += w
 		}
 	}
 
-	// Required loss weight
-	requiredLossWeight := weightedPayoutSum/o.config.TargetRTP - float64(totalWinWeight)
+	// ENFORCE MINIMUM HIT RATE (1 in 18)
+	// The hit rate N cannot be greater than 18 (i.e. probability cannot be less than 1/18).
+	minWinProb := 1.0 / 18.0
+	if totalWinProb < minWinProb-1e-9 {
+		warnings = append(warnings, fmt.Sprintf("Target hit rate (1:%.2f) is less frequent than the allowed minimum (1:18). Hit rate adjusted to 1:18.", 1.0/totalWinProb))
+		totalWinProb = minWinProb
+	}
+
+	var requiredLossWeight float64
+	if totalWinProb < 1.0 && totalWinProb > 0 {
+		lossProb := 1.0 - totalWinProb
+		requiredLossWeight = float64(totalWinWeight) * (lossProb / totalWinProb)
+	} else {
+		requiredLossWeight = float64(o.config.MinWeight)
+	}
+
 	if requiredLossWeight < float64(o.config.MinWeight) {
 		requiredLossWeight = float64(o.config.MinWeight)
 	}
@@ -1155,48 +1443,9 @@ func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignm
 		}
 	}
 
-	return weights, bucketResults, lossResult
+	return weights, bucketResults, lossResult, warnings
 }
 
-// fineTuneLossWeightWithVoiding adjusts loss weight while respecting voided outcomes
-func (o *BucketOptimizer) fineTuneLossWeightWithVoiding(weights []uint64, payouts []float64, lossIndices []int, voidedOutcomeIndices []int) []uint64 {
-	result := make([]uint64, len(weights))
-	copy(result, weights)
-
-	// Create set of voided outcome indices
-	voidedSet := make(map[int]bool)
-	for _, idx := range voidedOutcomeIndices {
-		voidedSet[idx] = true
-	}
-
-	// Calculate weighted payout sum for wins (excluding voided)
-	var weightedPayoutSum float64
-	var totalWinWeight uint64
-	for i, p := range payouts {
-		if p > 0 && result[i] > 0 && !voidedSet[i] {
-			weightedPayoutSum += float64(result[i]) * p
-			totalWinWeight += result[i]
-		}
-	}
-
-	// Required loss weight for target RTP
-	requiredLossWeight := weightedPayoutSum/o.config.TargetRTP - float64(totalWinWeight)
-	if requiredLossWeight < float64(len(lossIndices)) {
-		requiredLossWeight = float64(len(lossIndices))
-	}
-
-	// Distribute among loss outcomes
-	lossWeightPerOutcome := uint64(math.Round(requiredLossWeight / float64(len(lossIndices))))
-	if lossWeightPerOutcome < o.config.MinWeight {
-		lossWeightPerOutcome = o.config.MinWeight
-	}
-
-	for _, idx := range lossIndices {
-		result[idx] = lossWeightPerOutcome
-	}
-
-	return result
-}
 
 // buildOutcomeDetailsWithVoiding creates detailed info including voided outcomes
 func (o *BucketOptimizer) buildOutcomeDetailsWithVoiding(table *stakergs.LookupTable, payouts []float64, oldWeights, newWeights []uint64, assignments []bucketAssignment, lossIndices []int, voidedOutcomeIndices []int) []OutcomeDetail {
