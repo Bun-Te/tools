@@ -507,6 +507,7 @@ type CompareItem struct {
 	RTP               float64 `json:"rtp"`
 	HitRate           float64 `json:"hit_rate"`
 	MaxPayout         float64 `json:"max_payout"`
+	MaxWinHitRate     float64 `json:"max_win_hit_rate"`
 	Volatility        float64 `json:"volatility"`
 	MeanPayout        float64 `json:"mean_payout"`
 	MedianPayout      float64 `json:"median_payout"`
@@ -541,6 +542,7 @@ func (s *Server) handleCompare(w http.ResponseWriter, r *http.Request) {
 			RTP:               stats.RTP,
 			HitRate:           stats.HitRate,
 			MaxPayout:         stats.MaxPayout,
+			MaxWinHitRate:     s.loader.Analyzer().MaxWinHitRate(table),
 			Volatility:        stats.Volatility,
 			MeanPayout:        stats.MeanPayout,
 			MedianPayout:      stats.MedianPayout,

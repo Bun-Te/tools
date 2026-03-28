@@ -80,6 +80,23 @@ func NewAnalyzer() *Analyzer {
 	return &Analyzer{}
 }
 
+// MaxWinHitRate returns the aggregate selection probability of outcomes at the maximum payout.
+func (a *Analyzer) MaxWinHitRate(lut *stakergs.LookupTable) float64 {
+	totalWeight := lut.TotalWeight()
+	if totalWeight == 0 || len(lut.Outcomes) == 0 {
+		return 0
+	}
+	maxP := lut.MaxPayout()
+	var sum uint64
+	for i := range lut.Outcomes {
+		if lut.Outcomes[i].Payout == maxP {
+			sum += lut.Outcomes[i].Weight
+		}
+	}
+	// Do not use round4 here: rare max wins are ~1e-7; 4 decimal places would round to 0.
+	return float64(sum) / float64(totalWeight)
+}
+
 // MinNonZeroPayout returns the minimum non-zero payout multiplier.
 func (a *Analyzer) MinNonZeroPayout(lut *stakergs.LookupTable) float64 {
 	var min uint = math.MaxUint32

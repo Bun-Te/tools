@@ -331,7 +331,10 @@
 	"modeComparison": {
 		"title": "MODE COMPARISON",
 		"volatility": "Volatility",
-		"theoretical": "Theoretical"
+		"theoretical": "Theoretical",
+		"oddsAnyWin": "ANY WIN (1 IN …)",
+		"maxWinHitRate": "MAX WIN HR",
+		"maxWinHitRateHint": "Average spins between max-payout hits (theoretical)."
 	},
 	"optimizer": {
 		"title": "OPTIMIZER",

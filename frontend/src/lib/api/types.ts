@@ -82,6 +82,8 @@ export interface CompareItem {
 	rtp: number;
 	hit_rate: number;
 	max_payout: number;
+	/** Probability of an outcome at max payout (for "1 in …" max-win odds). */
+	max_win_hit_rate?: number;
 	volatility: number;
 	mean_payout: number;
 	median_payout: number;

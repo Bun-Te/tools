@@ -335,7 +335,10 @@
 	"modeComparison": {
 		"title": "เปรียบเทียบโหมด",
 		"volatility": "ความผันผวน",
-		"theoretical": "ทฤษฎี"
+		"theoretical": "ทฤษฎี",
+		"oddsAnyWin": "ANY WIN (1 IN …)",
+		"maxWinHitRate": "MAX WIN HR",
+		"maxWinHitRateHint": "Average spins between max-payout hits (theoretical)."
 	},
 	"optimizer": {
 		"title": "เครื่องมือเพิ่มประสิทธิภาพ",

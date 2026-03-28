@@ -335,7 +335,10 @@
 	"modeComparison": {
 		"title": "SO SÁNH CHẾ ĐỘ",
 		"volatility": "Biến động",
-		"theoretical": "Lý thuyết"
+		"theoretical": "Lý thuyết",
+		"oddsAnyWin": "ANY WIN (1 IN …)",
+		"maxWinHitRate": "MAX WIN HR",
+		"maxWinHitRateHint": "Average spins between max-payout hits (theoretical)."
 	},
 	"optimizer": {
 		"title": "TỐI ƯU HÓA",

@@ -335,7 +335,10 @@
 	"modeComparison": {
 		"title": "TILAVERTAILU",
 		"volatility": "Volatiliteetti",
-		"theoretical": "Teoreettinen"
+		"theoretical": "Teoreettinen",
+		"oddsAnyWin": "ANY WIN (1 IN …)",
+		"maxWinHitRate": "MAX WIN HR",
+		"maxWinHitRateHint": "Average spins between max-payout hits (theoretical)."
 	},
 	"optimizer": {
 		"title": "OPTIMOIJA",

@@ -331,7 +331,10 @@
 	"modeComparison": {
 		"title": "СРАВНЕНИЕ РЕЖИМОВ",
 		"volatility": "Волатильность",
-		"theoretical": "Теоретическое"
+		"theoretical": "Теоретическое",
+		"oddsAnyWin": "ЛЮБОЙ ВЫИГРЫШ (1 из …)",
+		"maxWinHitRate": "МАКСВИН HR",
+		"maxWinHitRateHint": "В среднем столько спинов между выпадениями максимального выигрыша (теория)."
 	},
 	"optimizer": {
 		"title": "ОПТИМИЗАТОР",

@@ -335,7 +335,10 @@
 	"modeComparison": {
 		"title": "模式比较",
 		"volatility": "波动性",
-		"theoretical": "理论"
+		"theoretical": "理论",
+		"oddsAnyWin": "ANY WIN (1 IN …)",
+		"maxWinHitRate": "MAX WIN HR",
+		"maxWinHitRateHint": "Average spins between max-payout hits (theoretical)."
 	},
 	"optimizer": {
 		"title": "优化器",

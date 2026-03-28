@@ -29,3 +29,22 @@ func TestPayoutBucketsRTPContributionSumsToRTP(t *testing.T) {
 		t.Fatalf("sum of bucket rtp_contribution=%g, lut.RTP()=%g", sum, want)
 	}
 }
+
+func TestMaxWinHitRate_NotRoundedToZeroForRareMaxWin(t *testing.T) {
+	a := NewAnalyzer()
+	lut := &stakergs.LookupTable{
+		Mode: "test",
+		Outcomes: []stakergs.Outcome{
+			{Weight: 10_000_000 - 1, Payout: 0},
+			{Weight: 1, Payout: 10_000_000}, // 100_000.00x in LUT cents? 10M = 100000x
+		},
+	}
+	p := a.MaxWinHitRate(lut)
+	if p <= 0 {
+		t.Fatalf("MaxWinHitRate=%g, want small positive probability", p)
+	}
+	exp := 1.0 / float64(10_000_000)
+	if math.Abs(p-exp) > 1e-12 {
+		t.Fatalf("MaxWinHitRate=%g, want %g", p, exp)
+	}
+}

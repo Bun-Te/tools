@@ -335,7 +335,10 @@
 	"modeComparison": {
 		"title": "모드 비교",
 		"volatility": "변동성",
-		"theoretical": "이론적"
+		"theoretical": "이론적",
+		"oddsAnyWin": "ANY WIN (1 IN …)",
+		"maxWinHitRate": "MAX WIN HR",
+		"maxWinHitRateHint": "Average spins between max-payout hits (theoretical)."
 	},
 	"optimizer": {
 		"title": "최적화",
