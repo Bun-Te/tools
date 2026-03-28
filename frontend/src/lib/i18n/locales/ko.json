@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "뷰어"
 	},
+	"lutUpdate": {
+		"title": "룩업 테이블이 변경되었습니다",
+		"body": "디스크의 가중치 파일이 업데이트되었습니다. 앱에서 데이터를 다시 불러올까요?",
+		"modesLabel": "모드:",
+		"update": "업데이트",
+		"close": "닫기",
+		"snooze5min": "5분 동안 표시하지 않기",
+		"updating": "업데이트 중..."
+	},
 	"badges": {
 		"beta": "베타",
 		"new": "신규",

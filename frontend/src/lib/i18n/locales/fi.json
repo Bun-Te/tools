@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "KATSELUOHJELMA"
 	},
+	"lutUpdate": {
+		"title": "Painotustaulukot muuttuivat",
+		"body": "Levyllä olevat painotiedostot päivittyivät. Ladataanko tiedot uudelleen sovelluksessa?",
+		"modesLabel": "Tilat:",
+		"update": "Päivitä",
+		"close": "Sulje",
+		"snooze5min": "Älä näytä 5 minuuttiin",
+		"updating": "Päivitetään..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "uusi",

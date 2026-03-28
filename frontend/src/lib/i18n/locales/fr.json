@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "VISIONNEUR"
 	},
+	"lutUpdate": {
+		"title": "Les tables de pondération ont changé",
+		"body": "Les fichiers de poids sur le disque ont été mis à jour. Recharger les données dans l’application ?",
+		"modesLabel": "Modes :",
+		"update": "Mettre à jour",
+		"close": "Fermer",
+		"snooze5min": "Ne plus afficher pendant 5 minutes",
+		"updating": "Mise à jour..."
+	},
 	"badges": {
 		"beta": "bêta",
 		"new": "nouveau",

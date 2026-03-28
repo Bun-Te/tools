@@ -1,5 +1,6 @@
 // Package watcher provides file system watching for data files.
-// When watched files are modified, it triggers automatic reload.
+// When watched files are modified, it notifies the application (e.g. WebSocket clients);
+// the server may apply reload only after user confirmation.
 package watcher
 
 import (
@@ -128,8 +129,8 @@ func (fw *FileWatcher) handleEvent(event fsnotify.Event) {
 		return
 	}
 
-	// Only care about write and create events
-	if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) {
+	// Write/Create: normal saves. Rename: atomic replace (temp → LUT csv) used by SaveWeights.
+	if !event.Has(fsnotify.Write) && !event.Has(fsnotify.Create) && !event.Has(fsnotify.Rename) {
 		return
 	}
 

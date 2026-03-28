@@ -451,7 +451,7 @@ func (a *App) StartBackend() error {
 	var cmd *exec.Cmd
 
 	// Build args list
-	args := []string{"-dir", a.config.LibraryPath}
+	args := []string{"-dir", a.config.LibraryPath, "-watch"}
 	if a.config.AutoLoadBooks {
 		args = append(args, "-autoload-books")
 	}

@@ -80,6 +80,8 @@ func (h *Handlers) HandleApply(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	h.notifyLutChanged(mode)
+
 	response := map[string]interface{}{
 		"saved":   true,
 		"message": "Weights applied successfully",
@@ -212,6 +214,8 @@ func (h *Handlers) HandleRestore(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	h.notifyLutChanged(mode)
+
 	response := map[string]interface{}{
 		"restored":      true,
 		"restored_from": req.BackupFile,
@@ -227,6 +231,20 @@ func (h *Handlers) HandleRestore(w http.ResponseWriter, r *http.Request) {
 // ============================================================================
 // Utilities
 // ============================================================================
+
+func (h *Handlers) notifyLutChanged(mode string) {
+	if h.wsHub == nil || mode == "" {
+		return
+	}
+	h.wsHub.Broadcast(ws.Message{
+		Type: ws.MsgLUTChangedOnDisk,
+		Mode: mode,
+		Payload: map[string]string{
+			"mode":    mode,
+			"message": "Lookup table updated",
+		},
+	})
+}
 
 func parseWeightsFromCSV(data []byte) ([]uint64, error) {
 	var weights []uint64
@@ -418,6 +436,7 @@ func (h *Handlers) HandleBucketOptimize(w http.ResponseWriter, r *http.Request) 
 			}
 			saveInfo = map[string]interface{}{"saved": true}
 		}
+		h.notifyLutChanged(mode)
 	}
 
 	// Get mode cost and max payout for context
@@ -1056,6 +1075,7 @@ func (h *Handlers) HandleBruteForceOptimizeWS(w http.ResponseWriter, r *http.Req
 					}
 					saveInfo = map[string]interface{}{"saved": true}
 				}
+				h.notifyLutChanged(mode)
 			}
 
 			// Get mode cost and max payout for context

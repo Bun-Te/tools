@@ -17,6 +17,7 @@
 		WelcomeModal,
 		LanguageSelector
 	} from '$lib/components';
+	import { lutClientRefreshRequest } from '$lib/stores/lutClientRefresh';
 
 	// Certificate check state
 	let welcomeModal: WelcomeModal;
@@ -117,11 +118,17 @@
 			}
 		}, CERT_CHECK_INTERVAL);
 
+		const unsubLutRefresh = lutClientRefreshRequest.subscribe((n) => {
+			if (n === 0) return;
+			void refreshAfterLutReload();
+		});
+
 		return () => {
 			window.removeEventListener('hashchange', handleHashChange);
 			if (certCheckInterval) {
 				clearInterval(certCheckInterval);
 			}
+			unsubLutRefresh();
 		};
 	});
 
@@ -137,20 +144,16 @@
 		}
 	}
 
-	async function reloadBooks() {
-		reloadLoading = true;
+	/** Refreshes index, comparison, stats, and compliance after LUT reload (no full book restart). */
+	async function refreshAfterLutReload() {
+		statsLoading = true;
 		try {
-			await api.reload();
-			// Reload all data
 			indexInfo = await api.getIndex();
 			const comparison = await api.compare();
 			compareItems = comparison.modes;
-
-			// Reload stats for current mode
 			if (selectedMode) {
 				stats = await api.getModeStats(selectedMode);
 			}
-
 			complianceReady = false;
 			api
 				.getAllCompliance()
@@ -161,9 +164,19 @@
 				.finally(() => {
 					complianceReady = true;
 				});
-
-			// Increment reloadKey to force re-mount components that load their own data
 			reloadKey++;
+		} catch (e) {
+			console.error('Failed to refresh after LUT reload:', e);
+		} finally {
+			statsLoading = false;
+		}
+	}
+
+	async function reloadBooks() {
+		reloadLoading = true;
+		try {
+			await api.reload();
+			await refreshAfterLutReload();
 		} catch (e) {
 			console.error('Failed to reload:', e);
 		} finally {

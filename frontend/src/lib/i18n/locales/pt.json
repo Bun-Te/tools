@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "VISUALIZADOR"
 	},
+	"lutUpdate": {
+		"title": "As tabelas de pesos foram alteradas",
+		"body": "Os arquivos de pesos no disco foram atualizados. Recarregar os dados no aplicativo?",
+		"modesLabel": "Modos:",
+		"update": "Atualizar",
+		"close": "Fechar",
+		"snooze5min": "Não mostrar por 5 minutos",
+		"updating": "Atualizando..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "novo",

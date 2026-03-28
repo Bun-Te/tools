@@ -29,8 +29,9 @@ const (
 	MsgLGSSessionsUpdate MessageType = "lgs_sessions_update"
 
 	// LUT watcher messages
-	MsgLUTReloaded     MessageType = "lut_reloaded"
-	MsgWatcherEnabled  MessageType = "watcher_enabled"
+	MsgLUTChangedOnDisk MessageType = "lut_changed_on_disk"
+	MsgLUTReloaded      MessageType = "lut_reloaded"
+	MsgWatcherEnabled   MessageType = "watcher_enabled"
 	MsgWatcherDisabled MessageType = "watcher_disabled"
 
 	// Optimizer progress messages

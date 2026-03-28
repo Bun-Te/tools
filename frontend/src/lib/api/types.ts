@@ -280,6 +280,8 @@ export type WSMessageType =
 	| 'loading_error'
 	| 'priority_changed'
 	| 'reload_started'
+	| 'lut_changed_on_disk'
+	| 'lut_reloaded'
 	| 'lgs_session_update'
 	| 'lgs_sessions_update'
 	| 'crowdsim_progress'

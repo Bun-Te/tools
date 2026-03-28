@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "XEM"
 	},
+	"lutUpdate": {
+		"title": "Bảng trọng số đã thay đổi",
+		"body": "Tệp trọng số trên đĩa đã được cập nhật. Tải lại dữ liệu trong ứng dụng?",
+		"modesLabel": "Chế độ:",
+		"update": "Cập nhật",
+		"close": "Đóng",
+		"snooze5min": "Không hiển thị trong 5 phút",
+		"updating": "Đang cập nhật..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "mới",

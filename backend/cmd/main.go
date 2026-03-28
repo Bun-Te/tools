@@ -102,7 +102,7 @@ func main() {
 	port := flag.Int("port", 7754, "Server port (HTTP)")
 	httpsPort := flag.Int("https-port", 7755, "HTTPS port (0 to disable)")
 	convexURL := flag.String("convex-url", "", "URL of the Convex Optimizer Python service (e.g., http://localhost:7756)")
-	watch := flag.Bool("watch", false, "Enable auto-reload when CSV lookup tables change")
+	watch := flag.Bool("watch", false, "Watch CSV lookup tables and notify clients (reload when they confirm)")
 	autoloadBooks := flag.Bool("autoload-books", false, "Enable automatic loading of event books at startup (uses more memory)")
 	flag.Parse()
 
@@ -159,16 +159,13 @@ func main() {
 		csvFiles := loader.GetCSVFiles()
 		var watcherErr error
 		csvWatcher, watcherErr = watcher.NewFileWatcher(loader.BaseDir(), csvFiles, func(mode string) error {
-			log.Printf("CSV file changed, reloading LUT for mode: %s", mode)
-			if reloadErr := loader.ReloadModeTable(mode); reloadErr != nil {
-				return reloadErr
-			}
-			// Broadcast to WebSocket clients
+			log.Printf("CSV file changed for mode %s — notifying clients (LUT reload when user confirms)", mode)
 			hub.Broadcast(ws.Message{
-				Type: ws.MsgLUTReloaded,
+				Type: ws.MsgLUTChangedOnDisk,
+				Mode: mode,
 				Payload: map[string]string{
 					"mode":    mode,
-					"message": "Lookup table reloaded",
+					"message": "Lookup table file changed on disk",
 				},
 			})
 			return nil
@@ -179,7 +176,7 @@ func main() {
 			if startErr := csvWatcher.Start(); startErr != nil {
 				log.Printf("Warning: Failed to start CSV watcher: %v", startErr)
 			} else {
-				log.Println("CSV watcher started (auto-reload on lookup table changes)")
+				log.Println("CSV watcher started (notifies clients on LUT file changes; reload via UI or POST /api/reload-lut)")
 			}
 		}
 	} else {

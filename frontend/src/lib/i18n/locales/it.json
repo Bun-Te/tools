@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "VISUALIZZATORE"
 	},
+	"lutUpdate": {
+		"title": "Le tabelle dei pesi sono cambiate",
+		"body": "I file dei pesi su disco sono stati aggiornati. Ricaricare i dati nell’app?",
+		"modesLabel": "Modalità:",
+		"update": "Aggiorna",
+		"close": "Chiudi",
+		"snooze5min": "Non mostrare per 5 minuti",
+		"updating": "Aggiornamento..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "nuovo",

@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "GÖRÜNTÜLEYICI"
 	},
+	"lutUpdate": {
+		"title": "Ağırlık tabloları değişti",
+		"body": "Diskteki ağırlık dosyaları güncellendi. Uygulamada veriler yenilensin mi?",
+		"modesLabel": "Modlar:",
+		"update": "Güncelle",
+		"close": "Kapat",
+		"snooze5min": "5 dakika boyunca gösterme",
+		"updating": "Güncelleniyor..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "yeni",

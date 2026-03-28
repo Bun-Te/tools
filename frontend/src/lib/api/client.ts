@@ -319,6 +319,10 @@ class LutApiClient {
 		return this.post('/api/reload');
 	}
 
+	async reloadLut(mode: string): Promise<{ message: string; mode: string }> {
+		return this.postJson('/api/reload-lut', { mode });
+	}
+
 	// WebSocket URL
 	getWebSocketUrl(): string {
 		const url = new URL(this.baseUrl);

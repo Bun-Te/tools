@@ -19,6 +19,15 @@
 		"lgs": "LGS",
 		"events": "VIEWER"
 	},
+	"lutUpdate": {
+		"title": "Lookup tables changed",
+		"body": "Weight files on disk were updated. Reload lookup data in the app?",
+		"modesLabel": "Modes:",
+		"update": "Update",
+		"close": "Close",
+		"snooze5min": "Do not show again for 5 minutes",
+		"updating": "Updating..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "new",

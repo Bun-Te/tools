@@ -4,6 +4,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { isLoading } from 'svelte-i18n';
 	import PreloadWarningModal from '$lib/components/PreloadWarningModal.svelte';
+	import LutUpdateBanner from '$lib/components/LutUpdateBanner.svelte';
 
 	let { children } = $props();
 </script>
@@ -23,3 +24,4 @@
 
 <!-- Global modals rendered at root level -->
 <PreloadWarningModal />
+<LutUpdateBanner />

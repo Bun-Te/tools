@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "查看器"
 	},
+	"lutUpdate": {
+		"title": "查找表已更改",
+		"body": "磁盘上的权重文件已更新。是否在应用中重新加载查找数据？",
+		"modesLabel": "模式：",
+		"update": "更新",
+		"close": "关闭",
+		"snooze5min": "5 分钟内不再显示",
+		"updating": "正在更新..."
+	},
 	"badges": {
 		"beta": "测试版",
 		"new": "新",

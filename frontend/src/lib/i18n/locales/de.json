@@ -23,6 +23,15 @@
 		"lgs": "LGS",
 		"events": "VIEWER"
 	},
+	"lutUpdate": {
+		"title": "Gewichtstabellen geändert",
+		"body": "Die Gewichtsdateien auf der Festplatte wurden aktualisiert. Daten in der App neu laden?",
+		"modesLabel": "Modi:",
+		"update": "Aktualisieren",
+		"close": "Schließen",
+		"snooze5min": "5 Minuten lang nicht anzeigen",
+		"updating": "Wird aktualisiert..."
+	},
 	"badges": {
 		"beta": "beta",
 		"new": "neu",

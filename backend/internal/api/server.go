@@ -158,6 +158,7 @@ func (s *Server) Start() error {
 	mux.HandleFunc("DELETE /api/loader/boost", s.handleLoaderUnboost)
 	mux.HandleFunc("GET /api/loader/priority", s.handleLoaderPriority)
 	mux.HandleFunc("POST /api/reload", s.handleReload)
+	mux.HandleFunc("POST /api/reload-lut", s.handleReloadLut)
 
 	// CSV Watcher API
 	mux.HandleFunc("GET /api/watcher/status", s.handleWatcherStatus)
@@ -267,6 +268,7 @@ func (s *Server) GetHandler() http.Handler {
 	mux.HandleFunc("DELETE /api/loader/boost", s.handleLoaderUnboost)
 	mux.HandleFunc("GET /api/loader/priority", s.handleLoaderPriority)
 	mux.HandleFunc("POST /api/reload", s.handleReload)
+	mux.HandleFunc("POST /api/reload-lut", s.handleReloadLut)
 
 	// CSV Watcher API
 	mux.HandleFunc("GET /api/watcher/status", s.handleWatcherStatus)
@@ -1039,6 +1041,46 @@ func (s *Server) handleReload(w http.ResponseWriter, r *http.Request) {
 
 	common.WriteSuccess(w, map[string]string{
 		"message": "Index and books reloaded successfully. Background loading restarted.",
+	})
+}
+
+type reloadLutRequest struct {
+	Mode string `json:"mode"`
+}
+
+// handleReloadLut reloads the lookup table (weights CSV) for one mode from disk.
+func (s *Server) handleReloadLut(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		common.WriteError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req reloadLutRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		common.WriteError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+	if req.Mode == "" {
+		common.WriteError(w, http.StatusBadRequest, "mode is required")
+		return
+	}
+
+	if err := s.loader.ReloadModeTable(req.Mode); err != nil {
+		common.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	s.wsHub.Broadcast(ws.Message{
+		Type: ws.MsgLUTReloaded,
+		Payload: map[string]string{
+			"mode":    req.Mode,
+			"message": "Lookup table reloaded",
+		},
+	})
+
+	common.WriteSuccess(w, map[string]string{
+		"message": "Lookup table reloaded successfully",
+		"mode":    req.Mode,
 	})
 }
 
