@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "beta",
+		"updated": "ενημερωμένο",
 		"new": "νέο",
 		"bonus": "BONUS",
 		"low": "ΧΑΜΗΛΟ",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "ΕΠΑΝΑΦΟΡΤΩΣΗ",
+		"retry": "ΕΠΑΝΑΛΗΨΗ",
 		"start": "ΕΚΚΙΝΗΣΗ",
 		"apply": "ΕΦΑΡΜΟΓΗ",
 		"set": "ΡΥΘΜΙΣΗ",
@@ -100,6 +102,9 @@
 		"initializing": "ΑΡΧΙΚΟΠΟΙΗΣΗ",
 		"loadingAnalysisData": "Φόρτωση δεδομένων ανάλυσης...",
 		"connectionFailed": "ΑΠΟΤΥΧΙΑ ΣΥΝΔΕΣΗΣ",
+		"connectionFailedHint": "Βεβαιωθείτε ότι το backend εκτελείται στη διεύθυνση παρακάτω και δοκιμάστε ξανά.",
+		"autoReconnectNotice": "Νέα προσπάθεια σύνδεσης εκτελείται αυτόματα κάθε {seconds} δευτερόλεπτα.",
+		"autoReconnecting": "Έλεγχος σύνδεσης…",
 		"selectMode": "ΕΠΙΛΕΞΤΕ ΛΕΙΤΟΥΡΓΙΑ",
 		"selectModeHint": "Επιλέξτε μια λειτουργία παιχνιδιού παραπάνω για λεπτομερή ανάλυση",
 		"selectModeForCrowdSim": "Επιλέξτε λειτουργία παιχνιδιού για εκτέλεση CrowdSim",

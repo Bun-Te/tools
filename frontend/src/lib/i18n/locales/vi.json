@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "beta",
+		"updated": "đã cập nhật",
 		"new": "mới",
 		"bonus": "THƯỞNG",
 		"low": "THẤP",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "TẢI LẠI",
+		"retry": "THỬ LẠI",
 		"start": "BẮT ĐẦU",
 		"apply": "ÁP DỤNG",
 		"set": "THIẾT LẬP",
@@ -100,6 +102,9 @@
 		"initializing": "ĐANG KHỞI TẠO",
 		"loadingAnalysisData": "Đang tải dữ liệu phân tích...",
 		"connectionFailed": "KẾT NỐI THẤT BẠI",
+		"connectionFailedHint": "Hãy đảm bảo backend đang chạy tại địa chỉ bên dưới, sau đó thử lại.",
+		"autoReconnectNotice": "Ứng dụng tự thử kết nối lại trong nền mỗi {seconds} giây.",
+		"autoReconnecting": "Đang kiểm tra kết nối…",
 		"selectMode": "CHỌN CHẾ ĐỘ",
 		"selectModeHint": "Chọn chế độ trò chơi ở trên để xem phân tích chi tiết",
 		"selectModeForCrowdSim": "Chọn chế độ trò chơi để chạy CrowdSim",

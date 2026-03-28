@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "beta",
+		"updated": "päivitetty",
 		"new": "uusi",
 		"bonus": "BONUS",
 		"low": "MATALA",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "LATAA UUDELLEEN",
+		"retry": "YRITÄ UUDELLEEN",
 		"start": "KÄYNNISTÄ",
 		"apply": "KÄYTÄ",
 		"set": "ASETA",
@@ -100,6 +102,9 @@
 		"initializing": "ALUSTETAAN",
 		"loadingAnalysisData": "Ladataan analyysitietoja...",
 		"connectionFailed": "YHTEYS EPÄONNISTUI",
+		"connectionFailedHint": "Varmista, että taustapalvelin on käynnissä alla olevan osoitteen kohdalla ja yritä uudelleen.",
+		"autoReconnectNotice": "Uusi yhteysyritys tehdään automaattisesti {seconds} sekunnin välein.",
+		"autoReconnecting": "Tarkistetaan yhteyttä…",
 		"selectMode": "VALITSE TILA",
 		"selectModeHint": "Valitse pelitila yläpuolelta nähdäksesi yksityiskohtaisen analytiikan",
 		"selectModeForCrowdSim": "Valitse pelitila suorittaaksesi CrowdSim",

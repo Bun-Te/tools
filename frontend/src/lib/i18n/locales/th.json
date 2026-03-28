@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "เบต้า",
+		"updated": "อัปเดตแล้ว",
 		"new": "ใหม่",
 		"bonus": "โบนัส",
 		"low": "ต่ำ",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "โหลดใหม่",
+		"retry": "ลองอีกครั้ง",
 		"start": "เริ่ม",
 		"apply": "ใช้",
 		"set": "ตั้งค่า",
@@ -100,6 +102,9 @@
 		"initializing": "กำลังเริ่มต้น",
 		"loadingAnalysisData": "กำลังโหลดข้อมูลวิเคราะห์...",
 		"connectionFailed": "การเชื่อมต่อล้มเหลว",
+		"connectionFailedHint": "ตรวจสอบว่าแบ็กเอนด์ทำงานที่ที่อยู่ด้านล่าง แล้วลองอีกครั้ง",
+		"autoReconnectNotice": "ระบบจะลองเชื่อมต่อใหม่อัตโนมัติในพื้นหลังทุก {seconds} วินาที",
+		"autoReconnecting": "กำลังตรวจสอบการเชื่อมต่อ…",
 		"selectMode": "เลือกโหมด",
 		"selectModeHint": "เลือกโหมดเกมด้านบนเพื่อดูการวิเคราะห์โดยละเอียด",
 		"selectModeForCrowdSim": "เลือกโหมดเกมเพื่อเรียกใช้ CrowdSim",

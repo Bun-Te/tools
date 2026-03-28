@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { get } from 'svelte/store';
 	import { api, type IndexInfo, type Statistics, type CompareItem, type AllModesComplianceResult } from '$lib/api';
 	import { _ } from '$lib/i18n';
 	import {
@@ -23,6 +24,11 @@
 	let welcomeModal: WelcomeModal;
 	let certCheckInterval: ReturnType<typeof setInterval> | null = null;
 	const CERT_CHECK_INTERVAL = 30000; // Check every 30 seconds
+
+	let connectionRetryInterval: ReturnType<typeof setInterval> | null = null;
+	const CONNECTION_RETRY_INTERVAL_MS = 15000;
+	let connectAttemptInFlight = $state(false);
+	let backgroundReconnecting = $state(false);
 
 	let indexInfo = $state<IndexInfo | null>(null);
 	let selectedMode = $state<string | null>(null);
@@ -73,6 +79,69 @@
 		selectedSimId = null;
 	}
 
+	function stopConnectionRetryLoop() {
+		if (connectionRetryInterval !== null) {
+			clearInterval(connectionRetryInterval);
+			connectionRetryInterval = null;
+		}
+	}
+
+	function ensureConnectionRetryLoop() {
+		if (connectionRetryInterval !== null) return;
+		connectionRetryInterval = setInterval(() => {
+			void loadInitialData({ background: true });
+		}, CONNECTION_RETRY_INTERVAL_MS);
+	}
+
+	type LoadInitialOpts = { background?: boolean };
+
+	async function loadInitialData(opts: LoadInitialOpts = {}) {
+		const background = opts.background ?? false;
+		if (connectAttemptInFlight) return;
+		connectAttemptInFlight = true;
+
+		if (!background) {
+			error = null;
+			loading = true;
+		} else {
+			backgroundReconnecting = true;
+		}
+		try {
+			indexInfo = await api.getIndex();
+			const comparison = await api.compare();
+			compareItems = comparison.modes;
+
+			stopConnectionRetryLoop();
+			error = null;
+
+			api
+				.getAllCompliance()
+				.then((data) => {
+					complianceData = data;
+				})
+				.catch((e) => console.error('Failed to load compliance:', e))
+				.finally(() => {
+					complianceReady = true;
+				});
+
+			if (indexInfo.modes.length > 0) {
+				await selectMode(indexInfo.modes[0].mode);
+			}
+		} catch (e) {
+			error = e instanceof Error ? e.message : get(_)('errors.failedToConnect');
+			if (!background) {
+				ensureConnectionRetryLoop();
+			}
+		} finally {
+			connectAttemptInFlight = false;
+			if (!background) {
+				loading = false;
+			} else {
+				backgroundReconnecting = false;
+			}
+		}
+	}
+
 	onMount(() => {
 		// Set initial panel from URL hash
 		activePanel = getHashPanel();
@@ -83,33 +152,7 @@
 		};
 		window.addEventListener('hashchange', handleHashChange);
 
-		// Load data
-		(async () => {
-			try {
-				indexInfo = await api.getIndex();
-				const comparison = await api.compare();
-				compareItems = comparison.modes;
-
-				// Load compliance data in background
-				api
-					.getAllCompliance()
-					.then((data) => {
-						complianceData = data;
-					})
-					.catch((e) => console.error('Failed to load compliance:', e))
-					.finally(() => {
-						complianceReady = true;
-					});
-
-				if (indexInfo.modes.length > 0) {
-					await selectMode(indexInfo.modes[0].mode);
-				}
-			} catch (e) {
-				error = e instanceof Error ? e.message : 'Failed to connect to backend';
-			} finally {
-				loading = false;
-			}
-		})();
+		void loadInitialData();
 
 		// Start background certificate check
 		certCheckInterval = setInterval(() => {
@@ -128,6 +171,7 @@
 			if (certCheckInterval) {
 				clearInterval(certCheckInterval);
 			}
+			stopConnectionRetryLoop();
 			unsubLutRefresh();
 		};
 	});
@@ -262,13 +306,13 @@
 	// Tab configuration
 	// Note: 'convexopt' tab temporarily disabled, will be enabled later
 	const tabs = [
-		{ id: 'overview', labelKey: 'nav.overview', icon: 'grid', badge: null },
-		{ id: 'distribution', labelKey: 'nav.distribution', icon: 'chart', badge: null },
-		{ id: 'events', labelKey: 'nav.events', icon: 'eye', badge: null },
-		{ id: 'crowdsim', labelKey: 'nav.crowdsim', icon: 'users', badge: null },
-		{ id: 'optimizer', labelKey: 'nav.optimizer', icon: 'bolt', badge: 'beta' },
-		// { id: 'convexopt', labelKey: 'nav.convex', icon: 'puzzle', badge: 'new' },
-		{ id: 'lgs', labelKey: 'nav.lgs', icon: 'server', badge: null },
+		{ id: 'overview', labelKey: 'nav.overview', icon: 'grid', badgeKey: null },
+		{ id: 'distribution', labelKey: 'nav.distribution', icon: 'chart', badgeKey: null },
+		{ id: 'events', labelKey: 'nav.events', icon: 'eye', badgeKey: null },
+		{ id: 'crowdsim', labelKey: 'nav.crowdsim', icon: 'users', badgeKey: null },
+		{ id: 'optimizer', labelKey: 'nav.optimizer', icon: 'bolt', badgeKey: 'badges.updated' },
+		// { id: 'convexopt', labelKey: 'nav.convex', icon: 'puzzle', badgeKey: 'badges.new' },
+		{ id: 'lgs', labelKey: 'nav.lgs', icon: 'server', badgeKey: null },
 	] as const;
 </script>
 
@@ -371,10 +415,29 @@
 							</svg>
 						</div>
 						<h2 class="font-display text-2xl text-[var(--color-coral)] tracking-wider mb-3">{$_('status.connectionFailed')}</h2>
-						<p class="text-[var(--color-mist)] mb-6">{error}</p>
-						<div class="inline-block px-4 py-2 rounded-lg data-cell">
+						<p class="text-sm text-[var(--color-mist)] mb-4 leading-relaxed">{$_('status.connectionFailedHint')}</p>
+						<p class="text-xs font-mono text-[var(--color-mist)] mb-4">{$_('status.autoReconnectNotice', { values: { seconds: Math.round(CONNECTION_RETRY_INTERVAL_MS / 1000) } })}</p>
+						{#if backgroundReconnecting}
+							<p class="text-xs font-mono text-[var(--color-cyan)] mb-4 flex items-center justify-center gap-2">
+								<svg class="w-3.5 h-3.5 animate-spin shrink-0" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+									<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+									<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+								</svg>
+								{$_('status.autoReconnecting')}
+							</p>
+						{/if}
+						<p class="text-[var(--color-light)]/90 font-mono text-sm mb-6 break-words">{error}</p>
+						<div class="inline-block px-4 py-2 rounded-lg data-cell mb-8">
 							<code class="font-mono text-sm text-[var(--color-light)]">localhost:7755</code>
 						</div>
+						<button
+							type="button"
+							onclick={() => void loadInitialData()}
+							disabled={connectAttemptInFlight}
+							class="w-full sm:w-auto px-8 py-3 rounded-lg font-display text-sm tracking-wider bg-[var(--color-cyan)] text-[var(--color-void)] hover:brightness-110 transition-all glow-cyan disabled:opacity-50 disabled:pointer-events-none"
+						>
+							{$_('buttons.retry')}
+						</button>
 					</div>
 				</div>
 			{:else if indexInfo}
@@ -463,8 +526,8 @@
 									onclick={() => setPanel(tab.id)}
 								>
 									<span class="font-mono text-xs tracking-wider">{$_(tab.labelKey)}</span>
-									{#if tab.badge}
-										<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{tab.badge}</span>
+									{#if tab.badgeKey}
+										<span class="ml-1.5 px-1.5 py-0.5 text-[9px] font-mono font-bold uppercase rounded bg-amber-500/20 text-amber-400 border border-amber-500/30">{$_(tab.badgeKey)}</span>
 									{/if}
 								</button>
 							{/each}

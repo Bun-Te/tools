@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "测试版",
+		"updated": "已更新",
 		"new": "新",
 		"bonus": "奖励",
 		"low": "低",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "重新加载",
+		"retry": "重试",
 		"start": "开始",
 		"apply": "应用",
 		"set": "设置",
@@ -100,6 +102,9 @@
 		"initializing": "正在初始化",
 		"loadingAnalysisData": "正在加载分析数据...",
 		"connectionFailed": "连接失败",
+		"connectionFailedHint": "请确认后端已在下方地址运行，然后重试。",
+		"autoReconnectNotice": "系统将每 {seconds} 秒在后台自动尝试重新连接。",
+		"autoReconnecting": "正在检查连接…",
 		"selectMode": "选择模式",
 		"selectModeHint": "在上方选择游戏模式以查看详细分析",
 		"selectModeForCrowdSim": "选择游戏模式以运行人群模拟",

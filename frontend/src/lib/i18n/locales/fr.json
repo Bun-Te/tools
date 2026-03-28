@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "bêta",
+		"updated": "mis à jour",
 		"new": "nouveau",
 		"bonus": "BONUS",
 		"low": "FAIBLE",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "RECHARGER",
+		"retry": "RÉESSAYER",
 		"start": "DÉMARRER",
 		"apply": "APPLIQUER",
 		"set": "DÉFINIR",
@@ -100,6 +102,9 @@
 		"initializing": "INITIALISATION",
 		"loadingAnalysisData": "Chargement des données d'analyse...",
 		"connectionFailed": "CONNEXION ÉCHOUÉE",
+		"connectionFailedHint": "Vérifiez que le backend tourne à l’adresse ci-dessous, puis réessayez.",
+		"autoReconnectNotice": "Une nouvelle tentative de connexion est lancée automatiquement toutes les {seconds} secondes.",
+		"autoReconnecting": "Vérification de la connexion…",
 		"selectMode": "SÉLECTIONNER UN MODE",
 		"selectModeHint": "Choisissez un mode de jeu ci-dessus pour voir les analyses détaillées",
 		"selectModeForCrowdSim": "Choisissez un mode de jeu pour exécuter CrowdSim",

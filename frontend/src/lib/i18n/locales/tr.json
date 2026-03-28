@@ -34,6 +34,7 @@
 	},
 	"badges": {
 		"beta": "beta",
+		"updated": "güncellendi",
 		"new": "yeni",
 		"bonus": "BONUS",
 		"low": "DÜŞÜK",
@@ -60,6 +61,7 @@
 	},
 	"buttons": {
 		"reload": "YENİLE",
+		"retry": "YENİDEN DENE",
 		"start": "BAŞLAT",
 		"apply": "UYGULA",
 		"set": "AYARLA",
@@ -100,6 +102,9 @@
 		"initializing": "BAŞLATILIYOR",
 		"loadingAnalysisData": "Analiz verileri yükleniyor...",
 		"connectionFailed": "BAĞLANTI BAŞARISIZ",
+		"connectionFailedHint": "Arka ucun aşağıdaki adreste çalıştığından emin olun ve yeniden deneyin.",
+		"autoReconnectNotice": "Her {seconds} saniyede bir arka planda otomatik yeniden bağlantı denenir.",
+		"autoReconnecting": "Bağlantı kontrol ediliyor…",
 		"selectMode": "MOD SEÇİN",
 		"selectModeHint": "Detaylı analizi görmek için yukarıdan bir oyun modu seçin",
 		"selectModeForCrowdSim": "CrowdSim çalıştırmak için bir oyun modu seçin",
