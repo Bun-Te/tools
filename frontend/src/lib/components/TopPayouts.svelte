@@ -1,74 +1,126 @@
 <script lang="ts">
-	import type { PayoutInfo } from '$lib/api';
+	import type { AllModesComplianceResult, ComplianceCheck } from '$lib/api';
 	import { _ } from '$lib/i18n';
 
 	interface Props {
-		payouts: PayoutInfo[];
-		onLook?: (simId: number) => void;
+		mode: string | null;
+		data: AllModesComplianceResult | null;
+		ready: boolean;
+		onOpenFull?: (mode: string) => void;
 	}
 
-	let { payouts, onLook }: Props = $props();
+	let { mode, data, ready, onOpenFull }: Props = $props();
 
-	function formatMultiplier(value: number): string {
-		return value.toFixed(2) + 'x';
+	function rowTone(check: ComplianceCheck): string {
+		if (check.passed) return 'text-slate-500';
+		if (check.severity === 'error') return 'text-[var(--color-coral)]';
+		if (check.severity === 'warning') return 'text-amber-400/85';
+		return 'text-slate-400';
 	}
+
+	function titleClass(check: ComplianceCheck): string {
+		if (check.passed) return 'text-[var(--color-light)]';
+		return rowTone(check);
+	}
+
+	function valueClass(check: ComplianceCheck): string {
+		if (check.passed) return 'text-emerald-400/90';
+		return rowTone(check);
+	}
+
+	let modeResult = $derived(mode && data?.mode_results?.[mode] ? data.mode_results[mode] : null);
 </script>
 
-<div class="h-full flex flex-col">
-	<div class="flex items-center gap-3 mb-6 shrink-0">
+<div class="h-full flex flex-col min-h-0">
+	<div class="flex items-center gap-3 mb-4 shrink-0">
 		<div class="w-1 h-5 bg-[var(--color-gold)] rounded-full"></div>
-		<h3 class="font-display text-lg text-[var(--color-light)] tracking-wider">{$_('topPayouts.title')}</h3>
+		<h3 class="font-display text-xl text-[var(--color-light)] tracking-wider flex-1 min-w-0">
+			{$_('nav.compliance')}
+		</h3>
+		{#if modeResult}
+			<span
+				class="h-2 w-2 shrink-0 rounded-full {modeResult.passed ? 'bg-emerald-400' : 'bg-[var(--color-coral)]'}"
+				title={modeResult.passed ? $_('compliance.allChecksPassed') : $_('compliance.complianceIssuesFound')}
+				aria-label={modeResult.passed ? $_('compliance.allChecksPassed') : $_('compliance.complianceIssuesFound')}
+			></span>
+		{/if}
 	</div>
 
-	{#if payouts.length === 0}
-		<div class="py-8 text-center text-slate-500">{$_('status.noData')}</div>
+	{#if !ready}
+		<div class="py-8 text-center text-slate-500 text-sm">{$_('status.loading')}</div>
+	{:else if !data}
+		<div class="py-8 text-center text-slate-500 text-sm">{$_('status.failedToLoadCompliance')}</div>
+	{:else if !mode}
+		<div class="py-8 text-center text-slate-500 text-sm">{$_('status.selectMode')}</div>
+	{:else if !modeResult}
+		<div class="py-8 text-center text-slate-500 text-sm">{$_('status.noData')}</div>
 	{:else}
-		<div class="flex-1 overflow-x-auto">
-			<table class="w-full">
-				<thead>
-					<tr class="text-left text-xs uppercase text-slate-500 tracking-wider">
-						<th class="pb-3 font-medium">#</th>
-						<th class="pb-3 font-medium">{$_('table.payout')}</th>
-						<th class="pb-3 text-right font-medium">{$_('table.books')}</th>
-						<th class="pb-3 text-right font-medium">{$_('table.weight')}</th>
-						<th class="pb-3 text-right font-medium">{$_('table.odds')}</th>
-						<th class="pb-3 text-right font-medium">{$_('table.action')}</th>
-					</tr>
-				</thead>
-				<tbody class="text-sm">
-					{#each payouts as payout, i}
-						<tr class="border-t border-slate-700/50 hover:bg-slate-700/20 transition-colors">
-							<td class="py-3 font-mono">
-								<span class="text-slate-500">#{i + 1}</span>
-							</td>
-							<td class="py-3">
-								<span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-lg bg-amber-500/10 text-amber-400 font-bold">
-									{formatMultiplier(payout.payout)}
-								</span>
-							</td>
-							<td class="py-3 text-right font-mono text-[var(--color-cyan)]">
-								{payout.count.toLocaleString()}
-							</td>
-							<td class="py-3 text-right text-slate-400 font-mono">
-								{payout.weight.toLocaleString()}
-							</td>
-							<td class="py-3 text-right text-slate-500 text-xs">{payout.odds}</td>
-							<td class="py-3 text-right">
-								<button
-									onclick={() => onLook?.(payout.sim_id)}
-									class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600/20 text-blue-400 text-xs font-medium hover:bg-blue-600/30 transition-colors border border-blue-500/20"
-								>
-									<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-										<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+		<div class="flex-1 min-h-0 max-h-[min(42rem,68vh)] overflow-y-auto overscroll-contain pr-1 -mr-1">
+			<section aria-label={mode}>
+				<div class="flex items-baseline justify-between gap-2 mb-4">
+					<span class="text-xs font-mono uppercase tracking-widest text-slate-400 capitalize truncate min-w-0">
+						{mode}
+					</span>
+					<div class="flex items-center gap-3 shrink-0">
+						<span
+							class="text-[11px] font-mono tabular-nums {modeResult.passed
+								? 'text-emerald-500/90'
+								: 'text-[var(--color-coral)]'}"
+						>
+							{modeResult.passed
+								? `${modeResult.passed_count}/${modeResult.checks.length}`
+								: `−${modeResult.failed_count}`}
+						</span>
+						{#if onOpenFull}
+							<button
+								type="button"
+								class="text-[11px] font-mono uppercase tracking-wider text-slate-500 hover:text-[var(--color-gold)] transition-colors"
+								onclick={() => onOpenFull(mode)}
+							>
+								{$_('buttons.view')}
+							</button>
+						{/if}
+					</div>
+				</div>
+
+				<ul class="divide-y divide-slate-700/40 rounded-xl border border-slate-700/35 bg-slate-900/20">
+					{#each modeResult.checks as check (check.id)}
+						<li class="flex gap-3 p-3.5 first:rounded-t-xl last:rounded-b-xl">
+							<span class="mt-0.5 shrink-0" aria-hidden="true">
+								{#if check.passed}
+									<svg class="h-4 w-4 text-emerald-500/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
 									</svg>
-									{$_('buttons.view')}
-								</button>
-							</td>
-						</tr>
+								{:else}
+									<svg class="h-4 w-4 opacity-90 {rowTone(check)}" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+									</svg>
+								{/if}
+							</span>
+							<div class="min-w-0 flex-1 space-y-1.5">
+								<div class="text-sm font-medium leading-snug {titleClass(check)}">
+									{$_(check.nameKey)}
+								</div>
+								<p class="text-[13px] leading-relaxed text-slate-500">
+									{$_(check.descriptionKey)}
+								</p>
+								<div class="text-[11px] leading-relaxed text-slate-600">
+									<span class="font-mono">{$_('compliance.expected')}:</span>
+									<span class="text-slate-500"> {check.expected}</span>
+									<span class="mx-1.5 text-slate-700">→</span>
+									<span class="font-mono">{$_('compliance.result')}:</span>
+									<span class="font-medium {valueClass(check)}"> {check.value}</span>
+								</div>
+								{#if !check.passed && check.reasonKey}
+									<p class="text-[12px] leading-relaxed border-l-2 border-slate-600/60 pl-2.5 {rowTone(check)}">
+										{$_(check.reasonKey)}
+									</p>
+								{/if}
+							</div>
+						</li>
 					{/each}
-				</tbody>
-			</table>
+				</ul>
+			</section>
 		</div>
 	{/if}
 </div>

@@ -29,6 +29,7 @@
 	let stats = $state<Statistics | null>(null);
 	let compareItems = $state<CompareItem[]>([]);
 	let complianceData = $state<AllModesComplianceResult | null>(null);
+	let complianceReady = $state(false);
 	let expandedComplianceMode = $state<string | null>(null);
 
 	let loading = $state(true);
@@ -91,9 +92,15 @@
 				compareItems = comparison.modes;
 
 				// Load compliance data in background
-				api.getAllCompliance().then(data => {
-					complianceData = data;
-				}).catch(e => console.error('Failed to load compliance:', e));
+				api
+					.getAllCompliance()
+					.then((data) => {
+						complianceData = data;
+					})
+					.catch((e) => console.error('Failed to load compliance:', e))
+					.finally(() => {
+						complianceReady = true;
+					});
 
 				if (indexInfo.modes.length > 0) {
 					await selectMode(indexInfo.modes[0].mode);
@@ -146,6 +153,17 @@
 				stats = await api.getModeStats(selectedMode);
 			}
 
+			complianceReady = false;
+			api
+				.getAllCompliance()
+				.then((data) => {
+					complianceData = data;
+				})
+				.catch((e) => console.error('Failed to load compliance:', e))
+				.finally(() => {
+					complianceReady = true;
+				});
+
 			// Increment reloadKey to force re-mount components that load their own data
 			reloadKey++;
 		} catch (e) {
@@ -180,8 +198,13 @@
 
 	// Simple volatility label for mode cards (no breakeven data available)
 	// Navigate to compliance tab and expand specific mode
-	function goToCompliance(mode: string, event: MouseEvent) {
+	function goToCompliance(mode: string, event: MouseEvent | KeyboardEvent) {
 		event.stopPropagation(); // Don't trigger the mode selection
+		expandedComplianceMode = mode;
+		setPanel('compliance');
+	}
+
+	function openComplianceForMode(mode: string) {
 		expandedComplianceMode = mode;
 		setPanel('compliance');
 	}
@@ -612,9 +635,14 @@
 									<PayoutBuckets buckets={stats.payout_buckets} />
 								</div>
 
-								<!-- Top Payouts -->
-								<div class="glass-panel rounded-2xl p-6 flex flex-col">
-									<TopPayouts payouts={stats.top_payouts} onLook={openEventModal} />
+								<!-- Compliance snapshot -->
+								<div class="glass-panel rounded-2xl p-6 flex flex-col min-h-0">
+									<TopPayouts
+										mode={selectedMode}
+										data={complianceData}
+										ready={complianceReady}
+										onOpenFull={openComplianceForMode}
+									/>
 								</div>
 
 								<!-- Mode Comparison -->
