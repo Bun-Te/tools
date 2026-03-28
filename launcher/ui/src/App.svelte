@@ -10,6 +10,7 @@
   type Config = main.Config;
   type WatcherStatus = main.WatcherStatus;
   type PortStatus = main.PortStatus;
+  type UpdateCheckResult = main.UpdateCheckResult;
 
   interface LogEntry {
     source: string;
@@ -25,6 +26,7 @@
     libraryPath: '',
     frontendPort: '7750',
     backendPort: '7754',
+    isProduction: false
   });
 
   let logs: string[] = $state([]);
@@ -39,7 +41,15 @@
   let config: Config = $state({
     libraryPath: '',
     frontendPort: '7750',
+    autoLoadBooks: false,
+    language: '',
+    disableAutoUpdateCheck: false
   });
+
+  let showUpdateModal = $state(false);
+  let pendingUpdate: UpdateCheckResult | null = $state(null);
+  /** Result of the last GitHub check when production + auto check is on */
+  let lastUpdateCheck: UpdateCheckResult | null = $state(null);
 
   let deps: Record<string, boolean> = $state({});
 
@@ -69,6 +79,8 @@
       config = await App.GetConfig();
       deps = await App.CheckDependencies();
       frontendUrl = await App.GetFrontendURL();
+
+      await refreshLauncherUpdateStatus({ showModalIfOutdated: true });
 
       // Subscribe to log events
       EventsOn('log', (data: LogEntry) => {
@@ -158,14 +170,51 @@
     }
   }
 
+  async function refreshLauncherUpdateStatus(opts?: { showModalIfOutdated?: boolean }) {
+    const prod = await App.IsProductionMode();
+    if (!prod || config.disableAutoUpdateCheck) {
+      lastUpdateCheck = null;
+      return;
+    }
+    try {
+      const u = await App.CheckForUpdates();
+      lastUpdateCheck = u;
+      if (opts?.showModalIfOutdated && u.updateAvailable && u.releaseUrl) {
+        pendingUpdate = u;
+        showUpdateModal = true;
+      }
+    } catch (e) {
+      console.warn('CheckForUpdates:', e);
+      lastUpdateCheck = null;
+    }
+  }
+
   async function saveConfig() {
     try {
       await App.SetConfig(config);
       showSettings = false;
       await refreshStatus();
+      await refreshLauncherUpdateStatus({ showModalIfOutdated: false });
     } catch (e: any) {
       error = e.message || String(e);
     }
+  }
+
+  async function openUpdateRelease() {
+    const url = pendingUpdate?.releaseUrl;
+    if (!url) return;
+    try {
+      await App.OpenReleasePage(url);
+    } catch (e: any) {
+      error = e.message || String(e);
+    }
+    showUpdateModal = false;
+    pendingUpdate = null;
+  }
+
+  function dismissUpdateModal() {
+    showUpdateModal = false;
+    pendingUpdate = null;
   }
 
   async function openInBrowser() {
@@ -420,6 +469,41 @@
         </div>
 
         <div class="setting-group">
+          <label class="checkbox-setting">
+            <input type="checkbox" bind:checked={config.disableAutoUpdateCheck} />
+            <span>{$_('settings.disableAutoUpdateCheck')}</span>
+          </label>
+          <p class="setting-hint">{$_('settings.disableAutoUpdateCheckHint')}</p>
+        </div>
+
+        {#if status.isProduction && lastUpdateCheck && !config.disableAutoUpdateCheck}
+          <div class="setting-group launcher-version-panel">
+            <span class="setting-label">{$_('updates.sectionTitle')}</span>
+            {#if lastUpdateCheck.checkFailed}
+              <p class="launcher-version-line warn">
+                {$_('updates.checkFailed', { values: { current: lastUpdateCheck.currentVersion } })}
+              </p>
+            {:else if lastUpdateCheck.skipped}
+              <p class="launcher-version-line muted">
+                {$_('updates.checkSkipped', { values: { current: lastUpdateCheck.currentVersion } })}
+              </p>
+            {:else if lastUpdateCheck.updateAvailable}
+              <p class="launcher-version-line warn">
+                {$_('updates.statusOutdated', {
+                  values: { current: lastUpdateCheck.currentVersion, latest: lastUpdateCheck.latestVersion }
+                })}
+              </p>
+            {:else if lastUpdateCheck.upToDate}
+              <p class="launcher-version-line ok">
+                {$_('updates.statusUpToDate', {
+                  values: { current: lastUpdateCheck.currentVersion, latest: lastUpdateCheck.latestVersion }
+                })}
+              </p>
+            {/if}
+          </div>
+        {/if}
+
+        <div class="setting-group">
           <span class="setting-label">{$_('settings.dependencies')}</span>
           <div class="deps-list">
             {#each Object.entries(deps) as [name, installed]}
@@ -491,6 +575,32 @@
           <img src={appIcon} alt="Mnemoo Tools" class="hero-logo" />
           <h1 class="hero-title">{$_('app.title')}</h1>
           <p class="hero-subtitle">{$_('welcome.description')}</p>
+
+          {#if status.isProduction && lastUpdateCheck && !config.disableAutoUpdateCheck}
+            <div class="hero-version-banner">
+              {#if lastUpdateCheck.checkFailed}
+                <p class="launcher-version-line warn">
+                  {$_('updates.checkFailed', { values: { current: lastUpdateCheck.currentVersion } })}
+                </p>
+              {:else if lastUpdateCheck.skipped}
+                <p class="launcher-version-line muted">
+                  {$_('updates.checkSkipped', { values: { current: lastUpdateCheck.currentVersion } })}
+                </p>
+              {:else if lastUpdateCheck.updateAvailable}
+                <p class="launcher-version-line warn">
+                  {$_('updates.statusOutdated', {
+                    values: { current: lastUpdateCheck.currentVersion, latest: lastUpdateCheck.latestVersion }
+                  })}
+                </p>
+              {:else if lastUpdateCheck.upToDate}
+                <p class="launcher-version-line ok">
+                  {$_('updates.statusUpToDate', {
+                    values: { current: lastUpdateCheck.currentVersion, latest: lastUpdateCheck.latestVersion }
+                  })}
+                </p>
+              {/if}
+            </div>
+          {/if}
 
           <!-- Status indicators -->
           <div class="hero-status">
@@ -593,6 +703,41 @@
       </div>
     {/if}
   </main>
+
+  {#if showUpdateModal && pendingUpdate}
+    <div
+      class="update-modal-backdrop"
+      role="presentation"
+      tabindex="-1"
+      onclick={dismissUpdateModal}
+      onkeydown={e => e.key === 'Escape' && dismissUpdateModal()}
+    >
+      <div
+        class="update-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="update-modal-title"
+        tabindex="0"
+        onclick={e => e.stopPropagation()}
+        onkeydown={e => e.stopPropagation()}
+      >
+        <h3 id="update-modal-title">{$_('updates.title')}</h3>
+        <p class="update-modal-msg">
+          {$_('updates.message', {
+            values: { current: pendingUpdate.currentVersion, latest: pendingUpdate.latestVersion }
+          })}
+        </p>
+        <div class="update-modal-actions">
+          <button type="button" class="secondary" onclick={dismissUpdateModal}>
+            {$_('updates.later')}
+          </button>
+          <button type="button" class="primary" onclick={openUpdateRelease}>
+            {$_('updates.download')}
+          </button>
+        </div>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -1444,5 +1589,100 @@
   .kill-btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  .update-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 28px 24px;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    animation: fadeIn 200ms ease;
+  }
+
+  .update-modal {
+    width: 100%;
+    max-width: 440px;
+    padding: 28px 26px 26px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: var(--shadow-md, 0 16px 48px rgba(0, 0, 0, 0.35));
+    animation: slideIn 220ms var(--ease-out-quart);
+  }
+
+  .update-modal h3 {
+    margin: 0 0 16px;
+    font-size: 18px;
+    color: var(--text-primary);
+  }
+
+  .update-modal-msg {
+    margin: 0;
+    padding: 2px 0 4px;
+    font-size: 14px;
+    line-height: 1.55;
+    color: var(--text-secondary);
+  }
+
+  .update-modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 26px;
+    padding-top: 4px;
+    flex-wrap: wrap;
+  }
+
+  .setting-group.launcher-version-panel {
+    padding: 20px 22px;
+  }
+
+  .launcher-version-panel .setting-label {
+    margin-bottom: 12px;
+  }
+
+  .launcher-version-panel .launcher-version-line {
+    margin: 0;
+    padding: 14px 16px;
+    font-size: 14px;
+    line-height: 1.5;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.06));
+  }
+
+  .hero-version-banner {
+    margin: 18px auto 0;
+    max-width: 520px;
+    text-align: center;
+    padding: 16px 24px 20px;
+  }
+
+  .hero-version-banner .launcher-version-line {
+    margin: 0;
+    padding: 12px 18px;
+    font-size: 13px;
+    line-height: 1.55;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    box-shadow: inset 0 0 0 1px var(--border-subtle, rgba(255, 255, 255, 0.07));
+  }
+
+  .launcher-version-line.ok {
+    color: #34d399;
+  }
+
+  .launcher-version-line.warn {
+    color: var(--warning, #f59e0b);
+  }
+
+  .launcher-version-line.muted {
+    color: var(--text-secondary);
   }
 </style>

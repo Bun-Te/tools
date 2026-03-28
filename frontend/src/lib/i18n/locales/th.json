@@ -318,7 +318,9 @@
 		"noPayouts": "ไม่มีการจ่ายในช่วงนี้",
 		"loadingMore": "กำลังโหลดเพิ่มเติม...",
 		"look": "ดู",
-		"force": "บังคับ"
+		"force": "บังคับ",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "ส่วนแบ่ง RTP ของโหมด (RTP รวม = 100%)"
 	},
 	"topPayouts": {
 		"title": "การจ่ายสูงสุด"

@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Φόρτωση βιβλίων γεγονότων κατά την εκκίνηση",
         "autoLoadBooksHint": "Όταν απενεργοποιηθεί, τα βιβλία δεν θα φορτώνονται αυτόματα για να αποφευχθεί υψηλή χρήση CPU. Μπορείτε να ξεκινήσετε τη φόρτωση χειροκίνητα από το frontend.",
         "autoReloadLUT": "Αυτόματη επαναφόρτωση LUT",
-        "dependencies": "Εξαρτήσεις"
+        "dependencies": "Εξαρτήσεις",
+        "disableAutoUpdateCheck": "Απενεργοποίηση αυτόματου ελέγχου ενημερώσεων",
+        "disableAutoUpdateCheckHint": "Όταν είναι ενεργό, ο εκκινητής δεν θα ελέγχει το GitHub Releases κατά την εκκίνηση."
+    },
+    "updates": {
+        "title": "Διαθέσιμη ενημέρωση",
+        "message": "Η έκδοση {latest} είναι διαθέσιμη. Η δική σας έκδοση: {current}.",
+        "sectionTitle": "Έκδοση launcher",
+        "statusUpToDate": "Έχετε την τελευταία έκδοση ({current}). Τελευταία στο GitHub: {latest}.",
+        "statusOutdated": "Η έκδοσή σας ({current}) είναι παλιά. Τελευταία κυκλοφορία: {latest}.",
+        "checkFailed": "Αδυναμία ελέγχου ενημερώσεων. Η έκδοσή σας: {current}.",
+        "checkSkipped": "Αυτό το build ({current}) δεν μπορεί να συγκριθεί με το GitHub. Χρησιμοποιήστε επίσημη έκδοση.",
+        "download": "Λήψη",
+        "later": "Όχι τώρα"
     },
     "logs": {
         "title": "Αρχεία καταγραφής",

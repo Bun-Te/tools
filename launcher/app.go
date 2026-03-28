@@ -29,22 +29,23 @@ const (
 )
 
 type Status struct {
-	Backend        ProcessStatus `json:"backend"`
-	Frontend       ProcessStatus `json:"frontend"`
-	BackendPID     int           `json:"backendPid"`
-	FrontendPID    int           `json:"frontendPid"`
-	MToolsExists   bool          `json:"mtoolsExists"`
-	LibraryPath    string        `json:"libraryPath"`
-	FrontendPort   string        `json:"frontendPort"`
-	BackendPort    string        `json:"backendPort"`
-	IsProduction   bool          `json:"isProduction"`
+	Backend      ProcessStatus `json:"backend"`
+	Frontend     ProcessStatus `json:"frontend"`
+	BackendPID   int           `json:"backendPid"`
+	FrontendPID  int           `json:"frontendPid"`
+	MToolsExists bool          `json:"mtoolsExists"`
+	LibraryPath  string        `json:"libraryPath"`
+	FrontendPort string        `json:"frontendPort"`
+	BackendPort  string        `json:"backendPort"`
+	IsProduction bool          `json:"isProduction"`
 }
 
 type Config struct {
-	LibraryPath   string `json:"libraryPath"`
-	FrontendPort  string `json:"frontendPort"`
-	AutoLoadBooks bool   `json:"autoLoadBooks"`
-	Language      string `json:"language"`
+	LibraryPath            string `json:"libraryPath"`
+	FrontendPort           string `json:"frontendPort"`
+	AutoLoadBooks          bool   `json:"autoLoadBooks"`
+	Language               string `json:"language"`
+	DisableAutoUpdateCheck bool   `json:"disableAutoUpdateCheck,omitempty"`
 }
 
 // WatcherStatus represents the backend watcher status
@@ -111,9 +112,14 @@ func (a *App) startup(ctx context.Context) {
 
 func (a *App) shutdown(ctx context.Context) {
 	a.StopAll()
-	// Cleanup extracted files in production
+	// Remove extracted assets but keep config.json and other user data in dataDir
 	if isProduction && a.dataDir != "" {
-		os.RemoveAll(a.dataDir)
+		if a.frontendDir != "" {
+			_ = os.RemoveAll(a.frontendDir)
+		}
+		if a.backendPath != "" {
+			_ = os.Remove(a.backendPath)
+		}
 	}
 }
 
@@ -125,6 +131,8 @@ func (a *App) setupProduction() {
 		return
 	}
 	a.dataDir = dataDir
+
+	a.loadConfigFromFile()
 
 	// Extract backend binary
 	backendName := "mtools-backend"
@@ -258,26 +266,41 @@ func (a *App) isValidProjectRoot(dir string) bool {
 	return errFE == nil && errBE == nil
 }
 
-func (a *App) loadConfig() {
-	// TODO: Enable config persistence when needed
-	// // Try to load saved config first
-	// configPath := a.getConfigPath()
-	// if data, err := os.ReadFile(configPath); err == nil {
-	// 	var savedConfig Config
-	// 	if err := json.Unmarshal(data, &savedConfig); err == nil {
-	// 		a.config = savedConfig
-	// 		// Ensure defaults for new fields
-	// 		if a.config.FrontendPort == "" {
-	// 			a.config.FrontendPort = DefaultFrontendPort
-	// 		}
-	// 		return
-	// 	}
-	// }
+func (a *App) mergeConfigDefaults() {
+	if a.config.FrontendPort == "" {
+		a.config.FrontendPort = DefaultFrontendPort
+	}
+}
 
-	// Fallback: Try to find default publish_files in testdata
+func (a *App) loadConfigFromFile() {
+	configPath := a.getConfigPath()
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		a.mergeConfigDefaults()
+		return
+	}
+	var saved Config
+	if err := json.Unmarshal(data, &saved); err != nil {
+		a.mergeConfigDefaults()
+		return
+	}
+	a.config = saved
+	a.mergeConfigDefaults()
+}
+
+func (a *App) applyDevLibraryPathDefault() {
 	defaultDir := filepath.Join(a.projectRoot, "backend", "testdata")
 	if _, err := os.Stat(defaultDir); err == nil {
 		a.config.LibraryPath = defaultDir
+	}
+}
+
+func (a *App) loadConfig() {
+	a.loadConfigFromFile()
+	if !isProduction {
+		if a.config.LibraryPath == "" {
+			a.applyDevLibraryPathDefault()
+		}
 	}
 }
 
@@ -289,23 +312,16 @@ func (a *App) getConfigPath() string {
 }
 
 func (a *App) saveConfigToFile() error {
-	// TODO: Enable config persistence when needed
-	return nil
-
-	// configPath := a.getConfigPath()
-	//
-	// // Ensure directory exists
-	// dir := filepath.Dir(configPath)
-	// if err := os.MkdirAll(dir, 0755); err != nil {
-	// 	return err
-	// }
-	//
-	// data, err := json.MarshalIndent(a.config, "", "  ")
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// return os.WriteFile(configPath, data, 0644)
+	configPath := a.getConfigPath()
+	dir := filepath.Dir(configPath)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(a.config, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(configPath, data, 0644)
 }
 
 // GetStatus returns current status of all processes
@@ -765,7 +781,7 @@ func (a *App) CheckDependencies() map[string]bool {
 	return deps
 }
 
-// IsProductionMode returns whether the app is running in production mode
+// IsProductionMode returns whether the app is running a release (embedded bundle) build.
 func (a *App) IsProductionMode() bool {
 	return isProduction
 }

@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "시작 시 이벤트 북 로드",
         "autoLoadBooksHint": "비활성화하면 높은 CPU 사용량을 방지하기 위해 북이 자동으로 로드되지 않습니다. 프론트엔드에서 수동으로 로드를 시작할 수 있습니다.",
         "autoReloadLUT": "자동 LUT 다시 로드",
-        "dependencies": "종속성"
+        "dependencies": "종속성",
+        "disableAutoUpdateCheck": "자동 업데이트 확인 끄기",
+        "disableAutoUpdateCheckHint": "켜면 시작 시 GitHub Releases를 확인하지 않습니다."
+    },
+    "updates": {
+        "title": "업데이트 있음",
+        "message": "{latest} 버전을 사용할 수 있습니다. 현재 버전: {current}.",
+        "sectionTitle": "런처 버전",
+        "statusUpToDate": "최신입니다 ({current}). GitHub 최신: {latest}.",
+        "statusOutdated": "버전({current})이 오래되었습니다. 최신 릴리스: {latest}.",
+        "checkFailed": "업데이트를 확인할 수 없습니다. 현재 버전: {current}.",
+        "checkSkipped": "이 빌드({current})는 GitHub와 비교할 수 없습니다. 공식 릴리스를 사용하세요.",
+        "download": "다운로드",
+        "later": "나중에"
     },
     "logs": {
         "title": "로그",

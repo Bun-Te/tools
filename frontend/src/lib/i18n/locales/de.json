@@ -318,7 +318,9 @@
 		"noPayouts": "Keine Auszahlungen in diesem Bereich",
 		"loadingMore": "Lade mehr...",
 		"look": "ANSEHEN",
-		"force": "ERZWINGEN"
+		"force": "ERZWINGEN",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Anteil am Modus-RTP (gesamtes RTP = 100 %)"
 	},
 	"topPayouts": {
 		"title": "TOP-AUSZAHLUNGEN"

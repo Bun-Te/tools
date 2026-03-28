@@ -318,7 +318,9 @@
 		"noPayouts": "Pas de gains dans cette plage",
 		"loadingMore": "Chargement...",
 		"look": "VOIR",
-		"force": "FORCER"
+		"force": "FORCER",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Part du RTP du mode (RTP total = 100 %)"
 	},
 	"topPayouts": {
 		"title": "MEILLEURS GAINS"

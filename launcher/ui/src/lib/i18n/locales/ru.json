@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Автозагрузка книг событий при запуске",
         "autoLoadBooksHint": "При отключении книги не загружаются автоматически для экономии CPU. Вы можете запустить загрузку вручную из фронтенда.",
         "autoReloadLUT": "Авто-обновление LUT",
-        "dependencies": "Зависимости"
+        "dependencies": "Зависимости",
+        "disableAutoUpdateCheck": "Отключить автоматическую проверку обновлений",
+        "disableAutoUpdateCheckHint": "Если включено, лаунчер не будет обращаться к GitHub Releases при запуске."
+    },
+    "updates": {
+        "title": "Доступно обновление",
+        "message": "Доступна версия {latest}. У вас установлена: {current}.",
+        "sectionTitle": "Версия лаунчера",
+        "statusUpToDate": "У вас актуальная версия ({current}). Последний релиз на GitHub: {latest}.",
+        "statusOutdated": "Ваша версия ({current}) устарела. Последний релиз: {latest}.",
+        "checkFailed": "Не удалось проверить обновления. Ваша версия: {current}.",
+        "checkSkipped": "Сборка ({current}) не позволяет сравнить версию с GitHub. Используйте официальный релиз для проверки обновлений.",
+        "download": "Скачать",
+        "later": "Позже"
     },
     "logs": {
         "title": "Логи",

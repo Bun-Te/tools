@@ -11,6 +11,22 @@
 	let maxProbability = $derived(Math.max(...buckets.map((b) => b.probability)));
 	let maxRangeEnd = $derived(Math.max(...buckets.map((b) => b.range_end)));
 
+	let hasRtpShare = $derived(
+		buckets.length > 0 &&
+			buckets.every(
+				(b) => typeof b.rtp_contribution === 'number' && Number.isFinite(b.rtp_contribution)
+			)
+	);
+	let totalRtpContribution = $derived(
+		hasRtpShare ? buckets.reduce((s, b) => s + (b.rtp_contribution ?? 0), 0) : 0
+	);
+
+	function formatRtpSharePercent(bucket: PayoutBucket): string {
+		if (!hasRtpShare || totalRtpContribution <= 0) return '—';
+		const p = ((bucket.rtp_contribution ?? 0) / totalRtpContribution) * 100;
+		return p.toFixed(1) + '%';
+	}
+
 	function formatNumber(v: number): string {
 		if (v >= 1_000_000) return (v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 1) + 'M';
 		if (v >= 1_000) return (v / 1_000).toFixed(v % 1_000 === 0 ? 0 : 1) + 'K';
@@ -84,6 +100,14 @@
 						></div>
 						<div class="absolute inset-0 bg-gradient-to-r from-transparent to-white/5"></div>
 					</div>
+					{#if hasRtpShare}
+						<div
+							class="w-14 shrink-0 text-right text-xs font-mono tabular-nums"
+							title={$_('distribution.rtpShareHint')}
+						>
+							<span class="text-[var(--color-emerald)]">{formatRtpSharePercent(bucket)}</span>
+						</div>
+					{/if}
 					<div class="w-24 shrink-0 text-right text-sm">
 						<span class="text-white font-medium">{formatOdds(bucket.probability)}</span>
 					</div>
@@ -95,6 +119,9 @@
 		</div>
 
 		<div class="mt-4 flex items-center justify-end gap-6 text-xs text-slate-500 shrink-0">
+			{#if hasRtpShare}
+				<span class="w-14 text-right" title={$_('distribution.rtpShareHint')}>{$_('distribution.rtpShare')}</span>
+			{/if}
 			<span>{$_('table.odds')}</span>
 			<span class="w-16 text-right">{$_('table.count')}</span>
 		</div>

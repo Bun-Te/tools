@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Lataa tapahtumakirjat käynnistyksessä",
         "autoLoadBooksHint": "Kun poistettu käytöstä, kirjoja ei ladata automaattisesti korkean suorittimen käytön estämiseksi. Voit aloittaa lataamisen manuaalisesti frontendistä.",
         "autoReloadLUT": "Lataa LUT automaattisesti uudelleen",
-        "dependencies": "Riippuvuudet"
+        "dependencies": "Riippuvuudet",
+        "disableAutoUpdateCheck": "Poista automaattinen päivitystarkistus käytöstä",
+        "disableAutoUpdateCheckHint": "Kun tämä on käytössä, käynnistyksessä ei kutsuta GitHub Releases -rajapintaa."
+    },
+    "updates": {
+        "title": "Päivitys saatavilla",
+        "message": "Versio {latest} on saatavilla. Sinulla on: {current}.",
+        "sectionTitle": "Launcherin versio",
+        "statusUpToDate": "Olet ajan tasalla ({current}). Uusin GitHubissa: {latest}.",
+        "statusOutdated": "Versiosi ({current}) on vanha. Uusin julkaisu: {latest}.",
+        "checkFailed": "Päivityksiä ei voitu tarkistaa. Versiosi: {current}.",
+        "checkSkipped": "Tämä build ({current}) ei ole vertailukelpoinen GitHubiin. Käytä virallista julkaisua.",
+        "download": "Lataa",
+        "later": "Ei nyt"
     },
     "logs": {
         "title": "Lokit",

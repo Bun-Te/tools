@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Tải sách sự kiện khi khởi động",
         "autoLoadBooksHint": "Khi tắt, sách sẽ không được tải tự động để tránh sử dụng CPU cao. Bạn có thể bắt đầu tải thủ công từ frontend.",
         "autoReloadLUT": "Tự động tải lại LUT",
-        "dependencies": "Phụ thuộc"
+        "dependencies": "Phụ thuộc",
+        "disableAutoUpdateCheck": "Tắt kiểm tra cập nhật tự động",
+        "disableAutoUpdateCheckHint": "Khi bật, trình khởi chạy sẽ không kiểm tra GitHub Releases khi khởi động."
+    },
+    "updates": {
+        "title": "Có bản cập nhật",
+        "message": "Phiên bản {latest} đã có. Phiên bản của bạn: {current}.",
+        "sectionTitle": "Phiên bản launcher",
+        "statusUpToDate": "Bạn đang dùng bản mới nhất ({current}). Mới nhất trên GitHub: {latest}.",
+        "statusOutdated": "Phiên bản của bạn ({current}) đã cũ. Bản phát hành mới nhất: {latest}.",
+        "checkFailed": "Không thể kiểm tra cập nhật. Phiên bản của bạn: {current}.",
+        "checkSkipped": "Bản dựng ({current}) không so sánh được với GitHub. Hãy dùng bản phát hành chính thức.",
+        "download": "Tải xuống",
+        "later": "Để sau"
     },
     "logs": {
         "title": "Nhật ký",

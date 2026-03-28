@@ -315,7 +315,9 @@
 		"noPayouts": "Нет выплат в этом диапазоне",
 		"loadingMore": "Загрузка...",
 		"look": "СМОТРЕТЬ",
-		"force": "ФОРСИРОВАТЬ"
+		"force": "ФОРСИРОВАТЬ",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Доля RTP режима (весь RTP = 100%)"
 	},
 	"topPayouts": {
 		"title": "ТОП ВЫПЛАТ"

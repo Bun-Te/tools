@@ -17,6 +17,9 @@ var assets embed.FS
 //go:embed appicon.png
 var appIcon []byte
 
+// Injected at link time for release builds, e.g. -ldflags "-X main.appVersion=v1.2.1"
+var appVersion = "dev"
+
 func main() {
 	app := NewApp()
 

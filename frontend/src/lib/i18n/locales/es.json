@@ -318,7 +318,9 @@
 		"noPayouts": "Sin pagos en este rango",
 		"loadingMore": "Cargando más...",
 		"look": "VER",
-		"force": "FORZAR"
+		"force": "FORZAR",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Parte del RTP del modo (RTP total = 100 %)"
 	},
 	"topPayouts": {
 		"title": "MEJORES PAGOS"

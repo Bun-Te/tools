@@ -46,11 +46,12 @@ type Statistics struct {
 
 // PayoutBucket represents a range of payouts for histogram visualization.
 type PayoutBucket struct {
-	RangeStart  float64 `json:"range_start"`
-	RangeEnd    float64 `json:"range_end"`
-	Count       int     `json:"count"`
-	Weight      uint64  `json:"weight"`
-	Probability float64 `json:"probability"`
+	RangeStart        float64 `json:"range_start"`
+	RangeEnd          float64 `json:"range_end"`
+	Count             int     `json:"count"`
+	Weight            uint64  `json:"weight"`
+	Probability       float64 `json:"probability"`
+	RTPContribution   float64 `json:"rtp_contribution"` // same units as LookupTable.RTP() (cost-adjusted)
 }
 
 // DistributionItem represents a single payout value with its statistics.
@@ -306,6 +307,11 @@ func (a *Analyzer) BuildPayoutBuckets(lut *stakergs.LookupTable, totalWeight uin
 		return nil
 	}
 
+	cost := lut.Cost
+	if cost <= 0 {
+		cost = 1.0
+	}
+
 	// Generate dynamic bucket boundaries
 	boundaries := generateBucketBoundaries(maxPayout)
 
@@ -349,6 +355,7 @@ func (a *Analyzer) BuildPayoutBuckets(lut *stakergs.LookupTable, totalWeight uin
 			if inBucket {
 				buckets[i].Count++
 				buckets[i].Weight += o.Weight
+				buckets[i].RTPContribution += float64(o.Weight) / float64(totalWeight) * float64(o.Payout) / 100.0 / cost
 				break
 			}
 		}

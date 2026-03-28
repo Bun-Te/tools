@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "โหลดหนังสือเหตุการณ์เมื่อเริ่มต้น",
         "autoLoadBooksHint": "เมื่อปิดใช้งาน หนังสือจะไม่ถูกโหลดอัตโนมัติเพื่อป้องกันการใช้ CPU สูง คุณสามารถเริ่มโหลดด้วยตนเองจากฟรอนท์เอนด์",
         "autoReloadLUT": "โหลด LUT ใหม่อัตโนมัติ",
-        "dependencies": "การพึ่งพา"
+        "dependencies": "การพึ่งพา",
+        "disableAutoUpdateCheck": "ปิดการตรวจอัปเดตอัตโนมัติ",
+        "disableAutoUpdateCheckHint": "เมื่อเปิดใช้ ตัวเปิดแอปจะไม่ตรวจ GitHub Releases ตอนเริ่มทำงาน"
+    },
+    "updates": {
+        "title": "มีอัปเดตใหม่",
+        "message": "มีเวอร์ชัน {latest} เวอร์ชันของคุณ: {current}",
+        "sectionTitle": "เวอร์ชันแอป Launcher",
+        "statusUpToDate": "คุณใช้เวอร์ชันล่าสุด ({current}) ล่าสุดบน GitHub: {latest}",
+        "statusOutdated": "เวอร์ชันของคุณ ({current}) ล้าสมัย เวอร์ชันล่าสุด: {latest}",
+        "checkFailed": "ตรวจอัปเดตไม่สำเร็จ เวอร์ชันของคุณ: {current}",
+        "checkSkipped": "บิลด์นี้ ({current}) เปรียบเทียบกับ GitHub ไม่ได้ โปรดใช้รีลีสทางการ",
+        "download": "ดาวน์โหลด",
+        "later": "ภายหลัง"
     },
     "logs": {
         "title": "บันทึก",

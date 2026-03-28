@@ -318,7 +318,9 @@
 		"noPayouts": "Không có thanh toán trong phạm vi này",
 		"loadingMore": "Đang tải thêm...",
 		"look": "XEM",
-		"force": "BUỘC"
+		"force": "BUỘC",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Phần RTP của chế độ (tổng RTP = 100%)"
 	},
 	"topPayouts": {
 		"title": "THANH TOÁN CAO NHẤT"

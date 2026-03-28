@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Ereignisbücher beim Start laden",
         "autoLoadBooksHint": "Wenn deaktiviert, werden Bücher nicht automatisch geladen, um hohe CPU-Auslastung zu vermeiden. Sie können das Laden manuell vom Frontend aus starten.",
         "autoReloadLUT": "LUT automatisch neu laden",
-        "dependencies": "Abhängigkeiten"
+        "dependencies": "Abhängigkeiten",
+        "disableAutoUpdateCheck": "Automatische Update-Prüfung deaktivieren",
+        "disableAutoUpdateCheckHint": "Wenn aktiviert, fragt der Launcher beim Start nicht GitHub Releases ab."
+    },
+    "updates": {
+        "title": "Update verfügbar",
+        "message": "Version {latest} ist verfügbar. Ihre Version: {current}.",
+        "sectionTitle": "Launcher-Version",
+        "statusUpToDate": "Sie sind auf dem neuesten Stand ({current}). Letzte auf GitHub: {latest}.",
+        "statusOutdated": "Ihre Version ({current}) ist veraltet. Neueste Release: {latest}.",
+        "checkFailed": "Update-Prüfung fehlgeschlagen. Ihre Version: {current}.",
+        "checkSkipped": "Dieser Build ({current}) lässt sich nicht mit GitHub vergleichen. Nutzen Sie ein offizielles Release.",
+        "download": "Herunterladen",
+        "later": "Später"
     },
     "logs": {
         "title": "Protokolle",

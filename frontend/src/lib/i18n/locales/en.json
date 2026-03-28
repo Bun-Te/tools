@@ -315,7 +315,9 @@
 		"noPayouts": "No payouts in this range",
 		"loadingMore": "Loading more...",
 		"look": "LOOK",
-		"force": "FORCE"
+		"force": "FORCE",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Share of mode RTP (whole RTP = 100%)"
 	},
 	"topPayouts": {
 		"title": "TOP PAYOUTS"

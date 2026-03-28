@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Auto-load event books at startup",
         "autoLoadBooksHint": "When disabled, books won't load automatically to prevent high CPU usage. You can manually start loading from the frontend.",
         "autoReloadLUT": "Auto-reload LUT",
-        "dependencies": "Dependencies"
+        "dependencies": "Dependencies",
+        "disableAutoUpdateCheck": "Disable automatic update checks",
+        "disableAutoUpdateCheckHint": "When enabled, the launcher will not check GitHub Releases on startup."
+    },
+    "updates": {
+        "title": "Update available",
+        "message": "Version {latest} is available. Your version: {current}.",
+        "sectionTitle": "Launcher version",
+        "statusUpToDate": "You are up to date ({current}). Latest on GitHub: {latest}.",
+        "statusOutdated": "Your version ({current}) is outdated. Latest release: {latest}.",
+        "checkFailed": "Could not check for updates. Your version: {current}.",
+        "checkSkipped": "This build ({current}) cannot be compared to GitHub releases. Use an official release build to check for updates.",
+        "download": "Download",
+        "later": "Not now"
     },
     "logs": {
         "title": "Logs",

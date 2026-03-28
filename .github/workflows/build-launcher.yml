@@ -236,12 +236,21 @@ jobs:
           New-Item -ItemType Directory -Force -Path build
           Copy-Item "appicon.png" "build\appicon.png"
 
+      - name: Set app version (ldflags)
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "release" ]; then
+            echo "APP_VERSION=${{ github.event.release.tag_name }}" >> "$GITHUB_ENV"
+          else
+            echo "APP_VERSION=dev" >> "$GITHUB_ENV"
+          fi
+
       # Build launcher with production tag
       - name: Build launcher (Unix)
         if: runner.os != 'Windows'
         working-directory: launcher
         run: |
-          ~/go/bin/wails build -platform ${{ matrix.platform }} -ldflags="-s -w" -tags "prod,webkit2_41"
+          ~/go/bin/wails build -platform ${{ matrix.platform }} -ldflags="-s -w -X main.appVersion=${APP_VERSION}" -tags "prod,webkit2_41"
 
       - name: Build launcher (Windows)
         if: runner.os == 'Windows'
@@ -249,7 +258,7 @@ jobs:
         shell: pwsh
         run: |
           $env:PATH = "$env:USERPROFILE\go\bin;$env:PATH"
-          wails build -platform ${{ matrix.platform }} -ldflags="-s -w" -tags prod
+          wails build -platform ${{ matrix.platform }} -ldflags="-s -w -X main.appVersion=$env:APP_VERSION" -tags prod
 
       # Package artifacts
       - name: Package macOS app

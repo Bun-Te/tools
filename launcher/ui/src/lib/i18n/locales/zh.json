@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "启动时自动加载事件书籍",
         "autoLoadBooksHint": "禁用时，书籍不会自动加载以避免高CPU使用率。您可以从前端手动开始加载。",
         "autoReloadLUT": "自动重新加载LUT",
-        "dependencies": "依赖项"
+        "dependencies": "依赖项",
+        "disableAutoUpdateCheck": "禁用自动检查更新",
+        "disableAutoUpdateCheckHint": "启用后，启动时将不会查询 GitHub Releases。"
+    },
+    "updates": {
+        "title": "有可用更新",
+        "message": "已有版本 {latest}。当前版本：{current}。",
+        "sectionTitle": "启动器版本",
+        "statusUpToDate": "您已是最新（{current}）。GitHub 最新：{latest}。",
+        "statusOutdated": "您的版本（{current}）已过时。最新发布：{latest}。",
+        "checkFailed": "无法检查更新。您的版本：{current}。",
+        "checkSkipped": "此构建（{current}）无法与 GitHub 比较。请使用官方发布版检查更新。",
+        "download": "下载",
+        "later": "稍后"
     },
     "logs": {
         "title": "日志",

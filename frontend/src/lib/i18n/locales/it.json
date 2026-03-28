@@ -318,7 +318,9 @@
 		"noPayouts": "Nessun pagamento in questo intervallo",
 		"loadingMore": "Caricamento...",
 		"look": "GUARDA",
-		"force": "FORZA"
+		"force": "FORZA",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Quota del RTP della modalità (RTP totale = 100 %)"
 	},
 	"topPayouts": {
 		"title": "MIGLIORI PAGAMENTI"

@@ -318,7 +318,9 @@
 		"noPayouts": "此范围内无支付",
 		"loadingMore": "加载更多...",
 		"look": "查看",
-		"force": "强制"
+		"force": "强制",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "占模式 RTP 比例（总 RTP = 100%）"
 	},
 	"topPayouts": {
 		"title": "最高支付"

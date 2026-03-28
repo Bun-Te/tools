@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Başlangıçta olay kitaplarını yükle",
         "autoLoadBooksHint": "Devre dışı bırakıldığında, yüksek CPU kullanımını önlemek için kitaplar otomatik olarak yüklenmez. Yüklemeyi frontend'den manuel olarak başlatabilirsiniz.",
         "autoReloadLUT": "LUT'u otomatik yeniden yükle",
-        "dependencies": "Bağımlılıklar"
+        "dependencies": "Bağımlılıklar",
+        "disableAutoUpdateCheck": "Otomatik güncelleme kontrolünü kapat",
+        "disableAutoUpdateCheckHint": "Açıksa, başlangıçta GitHub Releases sorgulanmaz."
+    },
+    "updates": {
+        "title": "Güncelleme mevcut",
+        "message": "{latest} sürümü mevcut. Sizin sürümünüz: {current}.",
+        "sectionTitle": "Launcher sürümü",
+        "statusUpToDate": "Güncelsiniz ({current}). GitHub’daki son: {latest}.",
+        "statusOutdated": "Sürümünüz ({current}) eski. Son sürüm: {latest}.",
+        "checkFailed": "Güncelleme kontrol edilemedi. Sürümünüz: {current}.",
+        "checkSkipped": "Bu derleme ({current}) GitHub ile karşılaştırılamaz. Resmi sürüm kullanın.",
+        "download": "İndir",
+        "later": "Şimdi değil"
     },
     "logs": {
         "title": "Günlükler",

@@ -25,6 +25,8 @@ export interface PayoutBucket {
 	count: number;
 	weight: number;
 	probability: number;
+	/** Cost-adjusted RTP share; sum over buckets matches mode RTP. */
+	rtp_contribution?: number;
 }
 
 export interface DistributionItem {

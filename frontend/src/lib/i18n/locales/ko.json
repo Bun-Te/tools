@@ -318,7 +318,9 @@
 		"noPayouts": "이 범위에 지급 없음",
 		"loadingMore": "더 로딩 중...",
 		"look": "보기",
-		"force": "강제"
+		"force": "강제",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "모드 RTP 비중 (전체 RTP = 100%)"
 	},
 	"topPayouts": {
 		"title": "상위 지급"

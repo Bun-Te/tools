@@ -318,7 +318,9 @@
 		"noPayouts": "Bu aralıkta ödeme yok",
 		"loadingMore": "Daha fazla yükleniyor...",
 		"look": "BAK",
-		"force": "ZORLA"
+		"force": "ZORLA",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Mod RTP payı (toplam RTP = %100)"
 	},
 	"topPayouts": {
 		"title": "EN YÜKSEK ÖDEMELER"

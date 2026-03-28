@@ -318,7 +318,9 @@
 		"noPayouts": "Ei voittoja tällä alueella",
 		"loadingMore": "Ladataan lisää...",
 		"look": "KATSO",
-		"force": "PAKOTA"
+		"force": "PAKOTA",
+		"rtpShare": "% RTP",
+		"rtpShareHint": "Osuus tilan RTP:stä (koko RTP = 100 %)"
 	},
 	"topPayouts": {
 		"title": "PARHAAT VOITOT"

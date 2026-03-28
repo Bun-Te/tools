@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Carica i libri eventi all'avvio",
         "autoLoadBooksHint": "Quando disabilitato, i libri non verranno caricati automaticamente per evitare un uso elevato della CPU. Puoi avviare il caricamento manualmente dal frontend.",
         "autoReloadLUT": "Ricarica auto LUT",
-        "dependencies": "Dipendenze"
+        "dependencies": "Dipendenze",
+        "disableAutoUpdateCheck": "Disabilita il controllo automatico degli aggiornamenti",
+        "disableAutoUpdateCheckHint": "Se attivo, il launcher non interrogherà GitHub Releases all’avvio."
+    },
+    "updates": {
+        "title": "Aggiornamento disponibile",
+        "message": "È disponibile la versione {latest}. La tua versione: {current}.",
+        "sectionTitle": "Versione launcher",
+        "statusUpToDate": "Sei aggiornato ({current}). Ultima su GitHub: {latest}.",
+        "statusOutdated": "La tua versione ({current}) non è aggiornata. Ultima release: {latest}.",
+        "checkFailed": "Impossibile verificare gli aggiornamenti. La tua versione: {current}.",
+        "checkSkipped": "Questa build ({current}) non può essere confrontata con GitHub. Usa una release ufficiale.",
+        "download": "Scarica",
+        "later": "Non ora"
     },
     "logs": {
         "title": "Log",

@@ -29,7 +29,20 @@
         "autoLoadBooksLong": "Charger les livres d'événements au démarrage",
         "autoLoadBooksHint": "Lorsque désactivé, les livres ne se chargeront pas automatiquement pour éviter une utilisation élevée du CPU. Vous pouvez lancer le chargement manuellement depuis le frontend.",
         "autoReloadLUT": "Rechargement auto du LUT",
-        "dependencies": "Dépendances"
+        "dependencies": "Dépendances",
+        "disableAutoUpdateCheck": "Désactiver la recherche automatique de mises à jour",
+        "disableAutoUpdateCheckHint": "Si activé, le lanceur ne vérifiera pas GitHub Releases au démarrage."
+    },
+    "updates": {
+        "title": "Mise à jour disponible",
+        "message": "La version {latest} est disponible. Votre version : {current}.",
+        "sectionTitle": "Version du lanceur",
+        "statusUpToDate": "Vous êtes à jour ({current}). Dernière sur GitHub : {latest}.",
+        "statusOutdated": "Votre version ({current}) est obsolète. Dernière version : {latest}.",
+        "checkFailed": "Impossible de vérifier les mises à jour. Votre version : {current}.",
+        "checkSkipped": "Cette build ({current}) ne peut pas être comparée à GitHub. Utilisez une release officielle.",
+        "download": "Télécharger",
+        "later": "Plus tard"
     },
     "logs": {
         "title": "Journaux",
