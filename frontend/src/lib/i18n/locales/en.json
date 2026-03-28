@@ -5,10 +5,9 @@
 		"version": "v1"
 	},
 	"common": {
-		"opening": "Opening...",
-		"setting": "Setting...",
-		"loading": "Loading...",
-		"close": "Close"
+		"modes": "MODES",
+		"selectMode": "Select mode...",
+		"pick": "Pick..."
 	},
 	"nav": {
 		"overview": "OVERVIEW",
@@ -244,11 +243,6 @@
 				"description": "Ensure there is a reasonable number of unique payout amounts for variety",
 				"reason": "Insufficient unique payout values for game variety"
 			},
-			"simulationDiversity": {
-				"name": "Simulation Diversity",
-				"description": "No single outcome should be so frequent it could appear multiple times in a session",
-				"reason": "Most frequent outcome has too high probability, may cause repetitive results"
-			},
 			"zeroPayoutRate": {
 				"name": "Zero Payout Rate",
 				"description": "A reasonable portion of simulations should yield paying results",
@@ -459,11 +453,6 @@
 	},
 	"booksLoading": {
 		"title": "BOOKS LOADING STATUS"
-	},
-	"common": {
-		"modes": "MODES",
-		"selectMode": "Select mode...",
-		"pick": "Pick..."
 	},
 	"volatility": {
 		"profile": "Volatility Profile",

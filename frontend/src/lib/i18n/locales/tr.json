@@ -247,11 +247,6 @@
 				"description": "Çeşitlilik için makul sayıda benzersiz ödeme tutarı olduğundan emin olun",
 				"reason": "Oyun çeşitliliği için yetersiz benzersiz ödeme değerleri"
 			},
-			"simulationDiversity": {
-				"name": "Simülasyon çeşitliliği",
-				"description": "Hiçbir sonuç bir oturumda birden fazla görünecek kadar sık olmamalıdır",
-				"reason": "En sık sonuç çok yüksek olasılığa sahip, tekrarlayan sonuçlara neden olabilir"
-			},
 			"zeroPayoutRate": {
 				"name": "Sıfır ödeme oranı",
 				"description": "Simülasyonların makul bir kısmı ödeme yapan sonuçlar vermeli",

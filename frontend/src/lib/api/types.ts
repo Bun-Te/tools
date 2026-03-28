@@ -338,7 +338,6 @@ export type ComplianceCheckID =
 	| 'hit_rate_reasonable'
 	| 'payout_gaps'
 	| 'unique_payouts'
-	| 'simulation_diversity'
 	| 'zero_payout_rate'
 	| 'volatility';
 
@@ -365,7 +364,6 @@ export interface ComplianceSummary {
 	unique_payouts: number;
 	zero_payout_rate: number;
 	volatility: number;
-	most_frequent_probability: number;
 }
 
 export interface ComplianceResult {

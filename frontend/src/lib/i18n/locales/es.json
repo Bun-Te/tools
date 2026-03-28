@@ -247,11 +247,6 @@
 				"description": "Asegurar que haya un número razonable de cantidades de pago únicas para variedad",
 				"reason": "Valores de pago únicos insuficientes para variedad del juego"
 			},
-			"simulationDiversity": {
-				"name": "Diversidad de simulación",
-				"description": "Ningún resultado debe ser tan frecuente que pueda aparecer varias veces en una sesión",
-				"reason": "El resultado más frecuente tiene probabilidad muy alta, puede causar resultados repetitivos"
-			},
 			"zeroPayoutRate": {
 				"name": "Tasa de pago cero",
 				"description": "Una porción razonable de simulaciones debería dar resultados con pago",

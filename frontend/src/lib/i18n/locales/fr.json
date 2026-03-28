@@ -247,11 +247,6 @@
 				"description": "Assurer un nombre raisonnable de montants de gain uniques pour la variété",
 				"reason": "Valeurs de gain uniques insuffisantes pour la variété du jeu"
 			},
-			"simulationDiversity": {
-				"name": "Diversité de simulation",
-				"description": "Aucun résultat ne devrait être si fréquent qu'il apparaît plusieurs fois dans une session",
-				"reason": "Le résultat le plus fréquent a une probabilité trop élevée, peut causer des résultats répétitifs"
-			},
 			"zeroPayoutRate": {
 				"name": "Taux de gain nul",
 				"description": "Une portion raisonnable des simulations devrait donner des résultats payants",

@@ -247,11 +247,6 @@
 				"description": "Sicherstellen, dass eine angemessene Anzahl einzigartiger Auszahlungsbeträge für Abwechslung vorhanden ist",
 				"reason": "Unzureichende einzigartige Auszahlungswerte für Spielabwechslung"
 			},
-			"simulationDiversity": {
-				"name": "Simulationsdiversität",
-				"description": "Kein einzelnes Ergebnis sollte so häufig sein, dass es mehrmals in einer Sitzung erscheint",
-				"reason": "Das häufigste Ergebnis hat zu hohe Wahrscheinlichkeit, kann repetitive Ergebnisse verursachen"
-			},
 			"zeroPayoutRate": {
 				"name": "Null-Auszahlungsrate",
 				"description": "Ein angemessener Anteil der Simulationen sollte zahlende Ergebnisse liefern",

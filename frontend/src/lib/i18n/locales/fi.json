@@ -247,11 +247,6 @@
 				"description": "Varmista, että on kohtuullinen määrä uniikkeja voittomääriä vaihtelun vuoksi",
 				"reason": "Riittämätön määrä uniikkeja voittoarvoja pelin vaihteluun"
 			},
-			"simulationDiversity": {
-				"name": "Simulaation monimuotoisuus",
-				"description": "Mikään yksittäinen tulos ei saisi olla niin yleinen, että se voisi esiintyä useita kertoja sessiossa",
-				"reason": "Yleisimmällä tuloksella on liian korkea todennäköisyys, voi aiheuttaa toistuvia tuloksia"
-			},
 			"zeroPayoutRate": {
 				"name": "Nollavoittoprosentti",
 				"description": "Kohtuullisen osan simulaatioista tulisi tuottaa voittavia tuloksia",

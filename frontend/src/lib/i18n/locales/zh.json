@@ -247,11 +247,6 @@
 				"description": "确保有合理数量的唯一支付金额以增加多样性",
 				"reason": "唯一支付值不足以满足游戏多样性"
 			},
-			"simulationDiversity": {
-				"name": "模拟多样性",
-				"description": "单个结果不应频繁到在一个会话中多次出现",
-				"reason": "最频繁的结果概率太高，可能导致重复结果"
-			},
 			"zeroPayoutRate": {
 				"name": "零支付率",
 				"description": "合理比例的模拟应该产生支付结果",

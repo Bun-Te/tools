@@ -16,9 +16,8 @@ const (
 	CheckMaxWinAchievable  ComplianceCheckID = "max_win_achievable"
 	CheckHitRateReasonable ComplianceCheckID = "hit_rate_reasonable"
 	CheckPayoutGaps        ComplianceCheckID = "payout_gaps"
-	CheckUniquePayouts     ComplianceCheckID = "unique_payouts"
-	CheckSimulationDiversity ComplianceCheckID = "simulation_diversity"
-	CheckZeroPayoutRate    ComplianceCheckID = "zero_payout_rate"
+	CheckUniquePayouts  ComplianceCheckID = "unique_payouts"
+	CheckZeroPayoutRate ComplianceCheckID = "zero_payout_rate"
 	CheckVolatility        ComplianceCheckID = "volatility"
 )
 
@@ -54,9 +53,8 @@ type ComplianceSummary struct {
 	MaxPayoutHitRate  float64 `json:"max_payout_hit_rate"`
 	TotalOutcomes     int     `json:"total_outcomes"`
 	UniquePayouts     int     `json:"unique_payouts"`
-	ZeroPayoutRate    float64 `json:"zero_payout_rate"`
-	Volatility        float64 `json:"volatility"`
-	MostFrequentProb  float64 `json:"most_frequent_probability"`
+	ZeroPayoutRate float64 `json:"zero_payout_rate"`
+	Volatility     float64 `json:"volatility"`
 }
 
 // AllModesComplianceResult contains compliance results for all modes.
@@ -99,7 +97,6 @@ func (c *ComplianceChecker) CheckMode(lut *stakergs.LookupTable) *ComplianceResu
 	// Calculate additional summary values
 	result.Summary.UniquePayouts = c.countUniquePayouts(lut)
 	result.Summary.MaxPayoutHitRate = c.calculateMaxPayoutHitRate(lut, totalWeight)
-	result.Summary.MostFrequentProb, _ = c.calculateMostFrequentProbability(lut, totalWeight)
 
 	// Run all checks
 	result.Checks = append(result.Checks, c.checkRTPRange(stats))
@@ -107,7 +104,6 @@ func (c *ComplianceChecker) CheckMode(lut *stakergs.LookupTable) *ComplianceResu
 	result.Checks = append(result.Checks, c.checkHitRateReasonable(lut, stats))
 	result.Checks = append(result.Checks, c.checkPayoutGaps(lut, stats))
 	result.Checks = append(result.Checks, c.checkUniquePayouts(lut))
-	result.Checks = append(result.Checks, c.checkSimulationDiversity(lut, totalWeight))
 	result.Checks = append(result.Checks, c.checkZeroPayoutRate(stats))
 	result.Checks = append(result.Checks, c.checkVolatility(stats))
 
@@ -516,32 +512,6 @@ func (c *ComplianceChecker) checkUniquePayouts(lut *stakergs.LookupTable) Compli
 	return check
 }
 
-func (c *ComplianceChecker) checkSimulationDiversity(lut *stakergs.LookupTable, totalWeight uint64) ComplianceCheck {
-	// No single result should be so frequent that it appears multiple times in a typical session
-	// With 100,000 simulations, a single result shouldn't exceed ~1% probability
-	maxSingleProb := 0.01 // 1%
-
-	mostFreqProb, _ := c.calculateMostFrequentProbability(lut, totalWeight)
-
-	check := ComplianceCheck{
-		ID:             CheckSimulationDiversity,
-		NameKey:        "compliance.checks.simulationDiversity.name",
-		DescriptionKey: "compliance.checks.simulationDiversity.description",
-		Expected:       fmt.Sprintf("Most frequent outcome < %.1f%%", maxSingleProb*100),
-		Value:          fmt.Sprintf("%.2f%%", mostFreqProb*100),
-		Severity:       "warning",
-	}
-
-	if mostFreqProb <= maxSingleProb {
-		check.Passed = true
-	} else {
-		check.Passed = false
-		check.ReasonKey = "compliance.checks.simulationDiversity.reason"
-	}
-
-	return check
-}
-
 func (c *ComplianceChecker) checkZeroPayoutRate(stats *Statistics) ComplianceCheck {
 	// Non-paying results shouldn't exceed 90%
 	maxZeroRate := 0.90
@@ -611,55 +581,6 @@ func (c *ComplianceChecker) calculateMaxPayoutHitRate(lut *stakergs.LookupTable,
 		return 0
 	}
 	return round4(float64(maxWeight) / float64(totalWeight))
-}
-
-func (c *ComplianceChecker) calculateMostFrequentProbability(lut *stakergs.LookupTable, totalWeight uint64) (float64, float64) {
-	if totalWeight == 0 {
-		return 0, 0
-	}
-
-	// Aggregate weights per payout while tracking top/second and zero payout weight.
-	payoutWeights := make(map[uint]uint64, len(lut.Outcomes))
-	var topWeight, secondWeight uint64
-	var topPayout uint
-	var zeroWeight uint64
-
-	for _, o := range lut.Outcomes {
-		p := o.Payout
-		w := payoutWeights[p] + o.Weight
-		payoutWeights[p] = w
-
-		if p == 0 {
-			zeroWeight = w
-		}
-
-		if p == topPayout {
-			topWeight = w
-		} else if w > topWeight {
-			secondWeight = topWeight
-			topWeight = w
-			topPayout = p
-		} else if w > secondWeight {
-			secondWeight = w
-		}
-	}
-
-	var chosen uint64
-	if topPayout == 0 {
-		chosen = secondWeight
-	} else {
-		chosen = topWeight
-	}
-
-	var mostFreqProb, zeroProb float64
-	if chosen > 0 {
-		mostFreqProb = round4(float64(chosen) / float64(totalWeight))
-	}
-	if zeroWeight > 0 {
-		zeroProb = round4(float64(zeroWeight) / float64(totalWeight))
-	}
-
-	return mostFreqProb, zeroProb
 }
 
 func formatLargeNumber(n float64) string {

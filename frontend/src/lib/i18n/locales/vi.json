@@ -247,11 +247,6 @@
 				"description": "Đảm bảo có số lượng hợp lý các số tiền thanh toán duy nhất cho sự đa dạng",
 				"reason": "Không đủ giá trị thanh toán duy nhất cho sự đa dạng của trò chơi"
 			},
-			"simulationDiversity": {
-				"name": "Đa dạng mô phỏng",
-				"description": "Không có kết quả nào nên xuất hiện thường xuyên đến mức xuất hiện nhiều lần trong một phiên",
-				"reason": "Kết quả thường xuyên nhất có xác suất quá cao, có thể gây ra kết quả lặp lại"
-			},
 			"zeroPayoutRate": {
 				"name": "Tỷ lệ thanh toán bằng không",
 				"description": "Một phần hợp lý của các mô phỏng nên cho kết quả có thanh toán",
