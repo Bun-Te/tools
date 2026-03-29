@@ -521,7 +521,7 @@
 										<span class="text-[var(--color-gold)]">{formatMultiplier(mode.max_payout)}</span>
 									</div>
 									<div class="mode-metric">
-										<span class="text-[var(--color-mist)]">BREAKEVEN</span>
+										<span class="text-[var(--color-mist)]">{$_('metrics.breakevenShort')}</span>
 										<span class="text-[var(--color-violet)]">{(modeBreakeven * 100).toFixed(1)}%</span>
 									</div>
 								</div>

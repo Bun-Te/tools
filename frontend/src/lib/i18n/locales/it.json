@@ -57,6 +57,7 @@
 		"min": "MIN",
 		"cost": "COSTO",
 		"breakeven": "PAREGGIO",
+		"breakevenShort": "B/E",
 		"evVsCost": "EV vs COSTO"
 	},
 	"buttons": {

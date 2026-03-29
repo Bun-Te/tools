@@ -57,6 +57,7 @@
 		"min": "ต่ำสุด",
 		"cost": "ต้นทุน",
 		"breakeven": "คุ้มทุน",
+		"breakevenShort": "B/E",
 		"evVsCost": "EV เทียบกับต้นทุน"
 	},
 	"buttons": {

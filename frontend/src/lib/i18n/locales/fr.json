@@ -57,6 +57,7 @@
 		"min": "MIN",
 		"cost": "COÛT",
 		"breakeven": "RENTABILITÉ",
+		"breakevenShort": "B/E",
 		"evVsCost": "EV vs COÛT"
 	},
 	"buttons": {

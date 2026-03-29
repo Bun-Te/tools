@@ -53,6 +53,7 @@
 		"min": "МИН",
 		"cost": "ЦЕНА",
 		"breakeven": "БЕЗУБЫТОК",
+		"breakevenShort": "Б/У",
 		"evVsCost": "EV vs ЦЕНА"
 	},
 	"buttons": {

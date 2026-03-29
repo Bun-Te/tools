@@ -57,6 +57,7 @@
 		"min": "MIN",
 		"cost": "KOSTEN",
 		"breakeven": "BREAK-EVEN",
+		"breakevenShort": "B/E",
 		"evVsCost": "EV vs KOSTEN"
 	},
 	"buttons": {

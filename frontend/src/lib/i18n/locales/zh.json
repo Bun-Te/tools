@@ -57,6 +57,7 @@
 		"min": "最小",
 		"cost": "成本",
 		"breakeven": "盈亏平衡",
+		"breakevenShort": "盈亏",
 		"evVsCost": "期望值 vs 成本"
 	},
 	"buttons": {

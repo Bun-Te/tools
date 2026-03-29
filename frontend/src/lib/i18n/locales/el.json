@@ -57,6 +57,7 @@
 		"min": "ΕΛΑΧ",
 		"cost": "ΚΟΣΤΟΣ",
 		"breakeven": "ΙΣΟΡΡΟΠΙΑ",
+		"breakevenShort": "B/E",
 		"evVsCost": "EV έναντι ΚΟΣΤΟΥΣ"
 	},
 	"buttons": {

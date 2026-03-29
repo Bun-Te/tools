@@ -57,6 +57,7 @@
 		"min": "MİN",
 		"cost": "MALİYET",
 		"breakeven": "BAŞABAŞ",
+		"breakevenShort": "B/E",
 		"evVsCost": "EV vs MALİYET"
 	},
 	"buttons": {

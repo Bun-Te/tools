@@ -57,6 +57,7 @@
 		"min": "최소",
 		"cost": "비용",
 		"breakeven": "손익분기",
+		"breakevenShort": "손익",
 		"evVsCost": "기대값 vs 비용"
 	},
 	"buttons": {
