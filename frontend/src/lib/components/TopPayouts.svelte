@@ -71,9 +71,9 @@
 					</span>
 				</div>
 
-				<ul class="divide-y divide-slate-700/40 rounded-xl border border-slate-700/35 bg-slate-900/20">
+				<ul class="grid gap-3 xl:grid-cols-2">
 					{#each modeResult.checks as check (check.id)}
-						<li class="flex gap-3 p-3.5 first:rounded-t-xl last:rounded-b-xl">
+						<li class="flex gap-3 rounded-xl border border-slate-700/35 bg-slate-900/20 p-3.5">
 							<span class="mt-0.5 shrink-0" aria-hidden="true">
 								{#if check.passed}
 									<svg class="h-4 w-4 text-emerald-500/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.25">

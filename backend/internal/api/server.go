@@ -958,25 +958,9 @@ func (s *Server) handleLoaderStatus(w http.ResponseWriter, r *http.Request) {
 
 // handleLoaderStart starts loading event books if not already started.
 func (s *Server) handleLoaderStart(w http.ResponseWriter, r *http.Request) {
-	if s.bgLoader == nil {
-		common.WriteError(w, http.StatusServiceUnavailable, "background loader not initialized")
-		return
-	}
-
-	if s.bgLoader.IsStarted() {
-		common.WriteSuccess(w, map[string]string{
-			"status":  "already_started",
-			"message": "Event books loading was already started",
-		})
-		return
-	}
-
-	s.bgLoader.Start()
-	log.Println("Background loader started via API")
-
 	common.WriteSuccess(w, map[string]string{
-		"status":  "started",
-		"message": "Event books loading started",
+		"status":  "disabled",
+		"message": "Event books preloading is disabled for safety. Lazy loading remains enabled by default.",
 	})
 }
 
@@ -1031,18 +1015,21 @@ func getPriorityDescription(p bgloader.Priority) string {
 
 // handleReload reloads the index.json and all books from disk.
 func (s *Server) handleReload(w http.ResponseWriter, r *http.Request) {
-	if s.bgLoader == nil {
-		common.WriteError(w, http.StatusServiceUnavailable, "background loader not initialized")
-		return
-	}
-
-	if err := s.bgLoader.Restart(); err != nil {
+	if err := s.loader.Reload(); err != nil {
 		common.WriteError(w, http.StatusInternalServerError, "reload failed: "+err.Error())
 		return
 	}
 
+	// Notify clients that LUT data was reloaded, while keeping event books in lazy mode.
+	s.wsHub.Broadcast(ws.Message{
+		Type: ws.MsgLUTReloaded,
+		Payload: map[string]string{
+			"message": "Index reloaded successfully. Event books stay in lazy-loading mode.",
+		},
+	})
+
 	common.WriteSuccess(w, map[string]string{
-		"message": "Index and books reloaded successfully. Background loading restarted.",
+		"message": "Index reloaded successfully. Event books remain lazy-loaded.",
 	})
 }
 

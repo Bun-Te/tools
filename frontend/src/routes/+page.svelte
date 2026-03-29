@@ -10,7 +10,6 @@
 		ModeComparison,
 		EventModal,
 		CrowdSimPanel,
-		BooksLoadingPanel,
 		LGSPanel,
 		EventViewerPanel,
 		OptimizerPanel,
@@ -40,9 +39,6 @@
 	let loading = $state(true);
 	let statsLoading = $state(false);
 	let error = $state<string | null>(null);
-	let weightedCardEl = $state<HTMLDivElement | null>(null);
-	let complianceCardEl = $state<HTMLDivElement | null>(null);
-	const COMPLIANCE_MIN_HEIGHT_PX = 320;
 
 	// Key to force re-mount of components on reload
 	let reloadKey = $state(0);
@@ -222,22 +218,6 @@
 	let currentModeInfo = $derived(indexInfo?.modes.find((m) => m.mode === selectedMode));
 	let currentCompareItem = $derived(compareItems.find((c) => c.mode === selectedMode));
 	let volatilityInfo = $derived(stats ? getVolatilityInfo(stats) : null);
-
-	$effect(() => {
-		if (!weightedCardEl || !complianceCardEl) return;
-		const complianceEl = complianceCardEl;
-		const applyHeight = (h: number) => {
-			complianceEl.style.height = `${Math.max(Math.round(h), COMPLIANCE_MIN_HEIGHT_PX)}px`;
-		};
-		applyHeight(weightedCardEl.getBoundingClientRect().height);
-		const observer = new ResizeObserver((entries) => {
-			const entry = entries[0];
-			if (!entry) return;
-			applyHeight(entry.contentRect.height);
-		});
-		observer.observe(weightedCardEl);
-		return () => observer.disconnect();
-	});
 
 	function formatPercent(value: number): string {
 		return (value * 100).toFixed(2) + '%';
@@ -520,117 +500,113 @@
 						aria-labelledby={`tab-${activePanel}`}
 					>
 						{#if activePanel === 'overview'}
-							<div class="grid gap-6 lg:grid-cols-2 items-stretch">
-								<!-- Detailed Metrics Grid -->
-								<div class="glass-panel rounded-2xl p-4 sm:p-5">
-									<div class="flex items-center gap-2 mb-3">
-										<div class="w-1 h-4 bg-[var(--color-violet)] rounded-full"></div>
-										<h3 class="font-display text-base sm:text-lg text-[var(--color-light)] tracking-wider">{$_('detailedMetrics.title')}</h3>
-									</div>
-									<div class="grid grid-cols-3 gap-2">
-										{#if volatilityInfo}
-											<div
-												class="data-cell rounded-lg px-4 py-3.5 col-span-3 border border-[var(--color-{volatilityInfo.color})]/20"
-											>
-												<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 justify-between">
-													<div class="flex items-center gap-2.5 min-w-0 flex-wrap">
-														<span class="text-[10px] font-mono {volatilityInfo.textClass} tracking-wider uppercase leading-tight">
-															{volatilityInfo.isBonusMode ? $_('metrics.volatilityCostAdj') : $_('metrics.volatility')}
-														</span>
-														<span class="font-mono text-sm text-[var(--color-light)] tabular-nums leading-tight font-semibold">
-															{volatilityInfo.displayValue.toFixed(2)}
-														</span>
-														<span class="text-[10px] font-mono font-bold {volatilityInfo.textClass} px-1.5 py-0.5 rounded bg-[var(--color-{volatilityInfo.color})]/15 leading-tight">{volatilityInfo.label}</span>
+							<div class="space-y-6">
+								<div class="grid gap-6 lg:grid-cols-2 items-start">
+									<div class="flex min-w-0 flex-col gap-6">
+										<!-- Detailed Metrics Grid -->
+										<div class="glass-panel rounded-2xl p-4 sm:p-5">
+											<div class="flex items-center gap-2 mb-3">
+												<div class="w-1 h-4 bg-[var(--color-violet)] rounded-full"></div>
+												<h3 class="font-display text-base sm:text-lg text-[var(--color-light)] tracking-wider">{$_('detailedMetrics.title')}</h3>
+											</div>
+											<div class="grid grid-cols-3 gap-2">
+												{#if volatilityInfo}
+													<div
+														class="data-cell rounded-lg px-4 py-3.5 col-span-3 border border-[var(--color-{volatilityInfo.color})]/20"
+													>
+														<div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 justify-between">
+															<div class="flex items-center gap-2.5 min-w-0 flex-wrap">
+																<span class="text-[10px] font-mono {volatilityInfo.textClass} tracking-wider uppercase leading-tight">
+																	{volatilityInfo.isBonusMode ? $_('metrics.volatilityCostAdj') : $_('metrics.volatility')}
+																</span>
+																<span class="font-mono text-sm text-[var(--color-light)] tabular-nums leading-tight font-semibold">
+																	{volatilityInfo.displayValue.toFixed(2)}
+																</span>
+																<span class="text-[10px] font-mono font-bold {volatilityInfo.textClass} px-1.5 py-0.5 rounded bg-[var(--color-{volatilityInfo.color})]/15 leading-tight">{volatilityInfo.label}</span>
+															</div>
+															{#if volatilityInfo.isBonusMode && volatilityInfo.breakevenRate !== undefined}
+																<span class="text-[10px] font-mono text-[var(--color-mist)] tabular-nums whitespace-nowrap">
+																	{$_('metrics.breakevenRate')}
+																	<span class="{volatilityInfo.textClass}">{(volatilityInfo.breakevenRate * 100).toFixed(1)}%</span>
+																</span>
+															{/if}
+														</div>
+														<div class="h-0.5 mt-2.5 rounded-full bg-[var(--color-slate)] overflow-hidden">
+															{#if volatilityInfo.isBonusMode && volatilityInfo.breakevenRate !== undefined}
+																<div
+																	class="h-full rounded-full"
+																	style="width: {volatilityInfo.breakevenRate * 100}%; background: linear-gradient(90deg, var(--color-coral), var(--color-gold), var(--color-emerald));"
+																></div>
+															{:else}
+																<div
+																	class="h-full rounded-full"
+																	style="width: {Math.min(volatilityInfo.displayValue / 20 * 100, 100)}%; background: linear-gradient(90deg, var(--color-emerald), var(--color-gold), var(--color-coral));"
+																></div>
+															{/if}
+														</div>
 													</div>
-													{#if volatilityInfo.isBonusMode && volatilityInfo.breakevenRate !== undefined}
-														<span class="text-[10px] font-mono text-[var(--color-mist)] tabular-nums whitespace-nowrap">
-															{$_('metrics.breakevenRate')}
-															<span class="{volatilityInfo.textClass}">{(volatilityInfo.breakevenRate * 100).toFixed(1)}%</span>
-														</span>
-													{/if}
+												{/if}
+												<div class="data-cell rounded-lg p-3">
+													<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.outcomes')}</div>
+													<div class="font-mono text-lg text-[var(--color-light)]">{stats.total_outcomes.toLocaleString()}</div>
 												</div>
-												<div class="h-0.5 mt-2.5 rounded-full bg-[var(--color-slate)] overflow-hidden">
-													{#if volatilityInfo.isBonusMode && volatilityInfo.breakevenRate !== undefined}
-														<div
-															class="h-full rounded-full"
-															style="width: {volatilityInfo.breakevenRate * 100}%; background: linear-gradient(90deg, var(--color-coral), var(--color-gold), var(--color-emerald));"
-														></div>
-													{:else}
-														<div
-															class="h-full rounded-full"
-															style="width: {Math.min(volatilityInfo.displayValue / 20 * 100, 100)}%; background: linear-gradient(90deg, var(--color-emerald), var(--color-gold), var(--color-coral));"
-														></div>
-													{/if}
+												<div class="data-cell rounded-lg p-3">
+													<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.zeroRate')}</div>
+													<div class="font-mono text-lg text-[var(--color-coral)]">{(stats.zero_payout_rate * 100).toFixed(2)}%</div>
 												</div>
-											</div>
-										{/if}
-										<div class="data-cell rounded-lg p-3">
-											<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.outcomes')}</div>
-											<div class="font-mono text-lg text-[var(--color-light)]">{stats.total_outcomes.toLocaleString()}</div>
-										</div>
-										<div class="data-cell rounded-lg p-3">
-											<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.zeroRate')}</div>
-											<div class="font-mono text-lg text-[var(--color-coral)]">{(stats.zero_payout_rate * 100).toFixed(2)}%</div>
-										</div>
-										<div class="data-cell rounded-lg p-3">
-											<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.mean')}</div>
-											<div class="font-mono text-lg text-[var(--color-violet)]">{stats.mean_payout.toFixed(2)}x</div>
-										</div>
-										<div class="data-cell rounded-lg p-3">
-											<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.median')}</div>
-											<div class="font-mono text-lg text-[var(--color-violet)]">{stats.median_payout.toFixed(2)}x</div>
-										</div>
-										<div class="data-cell rounded-lg p-3">
-											<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.stdDev')}</div>
-											<div class="font-mono text-base sm:text-lg text-[var(--color-gold)] tabular-nums">{stats.std_dev.toFixed(4)}</div>
-										</div>
-										<div class="data-cell rounded-lg p-3">
-											<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.min')}</div>
-											<div class="font-mono text-lg text-[var(--color-mist)]">{stats.min_payout.toFixed(2)}x</div>
-										</div>
-										{#if stats.cost > 1}
-											<!-- Cost-adjusted metrics for bonus modes -->
-											<div class="data-cell rounded-lg p-3 border border-[var(--color-gold)]/20">
-												<div class="text-[11px] font-mono text-[var(--color-gold)] mb-0.5">{$_('metrics.cost')}</div>
-												<div class="font-mono text-lg text-[var(--color-gold)]">{stats.cost.toFixed(0)}x</div>
-											</div>
-											<div class="data-cell rounded-lg p-3 border border-[var(--color-gold)]/20">
-												<div class="text-[11px] font-mono text-[var(--color-gold)] mb-0.5">{$_('metrics.breakeven')}</div>
-												<div class="font-mono text-lg {stats.breakeven_rate >= 0.3 ? 'text-[var(--color-emerald)]' : stats.breakeven_rate >= 0.15 ? 'text-[var(--color-gold)]' : 'text-[var(--color-coral)]'}">{(stats.breakeven_rate * 100).toFixed(1)}%</div>
-											</div>
-											<div class="data-cell rounded-lg p-3 border border-[var(--color-gold)]/20">
-												<div class="text-[11px] font-mono text-[var(--color-gold)] mb-0.5">{$_('metrics.evVsCost')}</div>
-												{#if true}
-													{@const evRatio = (stats.mean_payout / stats.cost - 1) * 100}
-													<div class="font-mono text-lg {evRatio >= 0 ? 'text-[var(--color-emerald)]' : 'text-[var(--color-coral)]'}">{evRatio >= 0 ? '+' : ''}{evRatio.toFixed(1)}%</div>
+												<div class="data-cell rounded-lg p-3">
+													<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.mean')}</div>
+													<div class="font-mono text-lg text-[var(--color-violet)]">{stats.mean_payout.toFixed(2)}x</div>
+												</div>
+												<div class="data-cell rounded-lg p-3">
+													<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.median')}</div>
+													<div class="font-mono text-lg text-[var(--color-violet)]">{stats.median_payout.toFixed(2)}x</div>
+												</div>
+												<div class="data-cell rounded-lg p-3">
+													<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.stdDev')}</div>
+													<div class="font-mono text-base sm:text-lg text-[var(--color-gold)] tabular-nums">{stats.std_dev.toFixed(4)}</div>
+												</div>
+												<div class="data-cell rounded-lg p-3">
+													<div class="text-[11px] font-mono text-[var(--color-mist)] mb-0.5">{$_('metrics.min')}</div>
+													<div class="font-mono text-lg text-[var(--color-mist)]">{stats.min_payout.toFixed(2)}x</div>
+												</div>
+												{#if stats.cost > 1}
+													<!-- Cost-adjusted metrics for bonus modes -->
+													<div class="data-cell rounded-lg p-3 border border-[var(--color-gold)]/20">
+														<div class="text-[11px] font-mono text-[var(--color-gold)] mb-0.5">{$_('metrics.cost')}</div>
+														<div class="font-mono text-lg text-[var(--color-gold)]">{stats.cost.toFixed(0)}x</div>
+													</div>
+													<div class="data-cell rounded-lg p-3 border border-[var(--color-gold)]/20">
+														<div class="text-[11px] font-mono text-[var(--color-gold)] mb-0.5">{$_('metrics.breakeven')}</div>
+														<div class="font-mono text-lg {stats.breakeven_rate >= 0.3 ? 'text-[var(--color-emerald)]' : stats.breakeven_rate >= 0.15 ? 'text-[var(--color-gold)]' : 'text-[var(--color-coral)]'}">{(stats.breakeven_rate * 100).toFixed(1)}%</div>
+													</div>
+													<div class="data-cell rounded-lg p-3 border border-[var(--color-gold)]/20">
+														<div class="text-[11px] font-mono text-[var(--color-gold)] mb-0.5">{$_('metrics.evVsCost')}</div>
+														{#if true}
+															{@const evRatio = (stats.mean_payout / stats.cost - 1) * 100}
+															<div class="font-mono text-lg {evRatio >= 0 ? 'text-[var(--color-emerald)]' : 'text-[var(--color-coral)]'}">{evRatio >= 0 ? '+' : ''}{evRatio.toFixed(1)}%</div>
+														{/if}
+													</div>
 												{/if}
 											</div>
-										{/if}
+										</div>
+
+										<!-- Payout Buckets -->
+										<div class="glass-panel rounded-2xl p-6 flex flex-col w-full">
+											<PayoutBuckets buckets={stats.payout_buckets} />
+										</div>
 									</div>
-								</div>
 
-								<!-- Books Loading Status -->
-								<div class="glass-panel rounded-2xl p-6 flex flex-col">
-									{#key reloadKey}
-										<BooksLoadingPanel />
-									{/key}
-								</div>
-
-								<!-- Payout Buckets -->
-								<div bind:this={weightedCardEl} class="glass-panel rounded-2xl p-6 flex flex-col self-start w-full">
-									<PayoutBuckets buckets={stats.payout_buckets} />
-								</div>
-
-								<!-- Compliance snapshot -->
-								<div
-									bind:this={complianceCardEl}
-									class="glass-panel rounded-2xl p-6 flex flex-col min-w-0 self-start w-full"
-								>
-									<TopPayouts mode={selectedMode} data={complianceData} ready={complianceReady} />
+									<div class="flex min-w-0 flex-col gap-6">
+										<!-- Compliance snapshot -->
+										<div class="glass-panel rounded-2xl p-6 flex flex-col min-w-0 h-full">
+											<TopPayouts mode={selectedMode} data={complianceData} ready={complianceReady} />
+										</div>
+									</div>
 								</div>
 
 								<!-- Mode Comparison -->
-								<div class="lg:col-span-2 glass-panel rounded-2xl p-6">
+								<div class="glass-panel rounded-2xl p-6">
 									<ModeComparison items={compareItems} />
 								</div>
 							</div>
