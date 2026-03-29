@@ -962,6 +962,33 @@ func (a *App) SetWatcherEnabled(enabled bool) error {
 	return nil
 }
 
+// ReloadBooks asks backend to reload index and books from disk.
+func (a *App) ReloadBooks() error {
+	// Check if backend is running
+	if a.backendCmd == nil || a.backendCmd.Process == nil {
+		return fmt.Errorf("backend is not running")
+	}
+
+	url := fmt.Sprintf("http://localhost:%s/api/reload", DefaultBackendPort)
+	req, err := http.NewRequest("POST", url, nil)
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to reload books: status %d", resp.StatusCode)
+	}
+
+	return nil
+}
+
 // parseJSONResponse helper to parse JSON response
 func parseJSONResponse(resp *http.Response, v interface{}) error {
 	if resp.StatusCode != http.StatusOK {

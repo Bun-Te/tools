@@ -15,8 +15,7 @@
 		EventViewerPanel,
 		OptimizerPanel,
 		// ConvexOptimizerPanel, // TODO: temporarily disabled, will be enabled later
-		WelcomeModal,
-		LanguageSelector
+		WelcomeModal
 	} from '$lib/components';
 	import { lutClientRefreshRequest } from '$lib/stores/lutClientRefresh';
 	import { BUILD_COMMIT, BUILD_VERSION } from '$lib/buildMeta';
@@ -41,7 +40,9 @@
 	let loading = $state(true);
 	let statsLoading = $state(false);
 	let error = $state<string | null>(null);
-	let reloadLoading = $state(false);
+	let weightedCardEl = $state<HTMLDivElement | null>(null);
+	let complianceCardEl = $state<HTMLDivElement | null>(null);
+	const COMPLIANCE_MIN_HEIGHT_PX = 320;
 
 	// Key to force re-mount of components on reload
 	let reloadKey = $state(0);
@@ -217,22 +218,26 @@
 		}
 	}
 
-	async function reloadBooks() {
-		reloadLoading = true;
-		try {
-			await api.reload();
-			await refreshAfterLutReload();
-		} catch (e) {
-			console.error('Failed to reload:', e);
-		} finally {
-			reloadLoading = false;
-		}
-	}
-
 	// Derived data for dashboard
 	let currentModeInfo = $derived(indexInfo?.modes.find((m) => m.mode === selectedMode));
 	let currentCompareItem = $derived(compareItems.find((c) => c.mode === selectedMode));
 	let volatilityInfo = $derived(stats ? getVolatilityInfo(stats) : null);
+
+	$effect(() => {
+		if (!weightedCardEl || !complianceCardEl) return;
+		const complianceEl = complianceCardEl;
+		const applyHeight = (h: number) => {
+			complianceEl.style.height = `${Math.max(Math.round(h), COMPLIANCE_MIN_HEIGHT_PX)}px`;
+		};
+		applyHeight(weightedCardEl.getBoundingClientRect().height);
+		const observer = new ResizeObserver((entries) => {
+			const entry = entries[0];
+			if (!entry) return;
+			applyHeight(entry.contentRect.height);
+		});
+		observer.observe(weightedCardEl);
+		return () => observer.disconnect();
+	});
 
 	function formatPercent(value: number): string {
 		return (value * 100).toFixed(2) + '%';
@@ -342,59 +347,6 @@
 	</div>
 
 	<div class="relative z-10">
-		<!-- Header -->
-		<header class="border-b border-white/[0.04] sticky top-0 z-50 glass-panel">
-			<div class="max-w-[1800px] mx-auto px-8 py-5">
-				<div class="flex items-center justify-between">
-					<!-- Logo & Title -->
-					<div class="flex items-center gap-5">
-						<div class="relative">
-							<div class="w-12 h-12 rounded-lg bg-[var(--color-cyan)] flex items-center justify-center glow-cyan">
-								<svg class="w-6 h-6 text-[var(--color-void)]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-								</svg>
-							</div>
-
-						</div>
-						<div>
-							<h1 class="font-display text-2xl text-[var(--color-light)] tracking-wider">{$_('app.title')}</h1>
-							<p class="text-xs text-[var(--color-mist)] font-mono tracking-widest">{$_('app.subtitle')}</p>
-						</div>
-					</div>
-
-					<!-- Status Indicators -->
-					{#if indexInfo}
-						<div class="flex items-center gap-3">
-							<div class="px-3 py-1.5 rounded-lg data-cell">
-								<span class="text-xs font-mono text-[var(--color-mist)]">
-									<span class="text-[var(--color-cyan)]">{indexInfo.modes.length}</span> {$_('common.modes')}
-								</span>
-							</div>
-							<button
-								onclick={reloadBooks}
-								disabled={reloadLoading}
-								class="px-3 py-1.5 rounded-lg data-cell text-xs font-mono text-[var(--color-gold)] hover:bg-[var(--color-gold)]/10 transition-colors disabled:opacity-50 flex items-center gap-2"
-								title="Reload index.json and all books"
-							>
-								{#if reloadLoading}
-									<svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-										<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-										<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-									</svg>
-								{:else}
-									<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-										<path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-									</svg>
-								{/if}
-								{$_('buttons.reload')}
-							</button>
-							<LanguageSelector />
-						</div>
-					{/if}
-				</div>
-			</div>
-		</header>
-
 		<!-- Main Content -->
 		<main class="max-w-[1800px] mx-auto px-8 py-10">
 			{#if loading}
@@ -665,12 +617,15 @@
 								</div>
 
 								<!-- Payout Buckets -->
-								<div class="glass-panel rounded-2xl p-6 flex flex-col">
+								<div bind:this={weightedCardEl} class="glass-panel rounded-2xl p-6 flex flex-col self-start w-full">
 									<PayoutBuckets buckets={stats.payout_buckets} />
 								</div>
 
 								<!-- Compliance snapshot -->
-								<div class="glass-panel rounded-2xl p-6 flex flex-col min-h-0">
+								<div
+									bind:this={complianceCardEl}
+									class="glass-panel rounded-2xl p-6 flex flex-col min-w-0 self-start w-full"
+								>
 									<TopPayouts mode={selectedMode} data={complianceData} ready={complianceReady} />
 								</div>
 

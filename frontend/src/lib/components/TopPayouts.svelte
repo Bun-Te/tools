@@ -54,7 +54,7 @@
 	{:else if !modeResult}
 		<div class="py-8 text-center text-slate-500 text-sm">{$_('status.noData')}</div>
 	{:else}
-		<div class="flex-1 min-h-0 max-h-[min(42rem,68vh)] overflow-y-auto overscroll-contain pr-1 -mr-1">
+		<div class="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-2 pb-2 -mr-1">
 			<section aria-label={mode}>
 				<div class="flex items-baseline justify-between gap-2 mb-4">
 					<span class="text-xs font-mono uppercase tracking-widest text-slate-400 capitalize truncate min-w-0">

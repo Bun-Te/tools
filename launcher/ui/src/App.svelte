@@ -34,6 +34,7 @@
   let showSettings = $state(false);
   let showEmbed = $state(true);
   let loading = $state(false);
+  let reloadBooksLoading = $state(false);
   let error = $state('');
   let frontendUrl = $state('');
   let iframeKey = $state(0);
@@ -234,6 +235,21 @@
     iframeKey++;
   }
 
+  async function reloadBooks() {
+    if (reloadBooksLoading) return;
+    reloadBooksLoading = true;
+    error = '';
+    try {
+      await App.ReloadBooks();
+      await refreshStatus();
+      reloadIframe();
+    } catch (e: any) {
+      error = e.message || String(e);
+    } finally {
+      reloadBooksLoading = false;
+    }
+  }
+
   // Watcher functions
   async function refreshWatcherStatus() {
     if (status.backend !== 'running') {
@@ -371,70 +387,114 @@
   <!-- Compact Header (visible when running or in panels) -->
   {#if showSettings || showLogs || status.frontend === 'running'}
     <header class="header header-compact">
-      <div class="header-left">
-        <img src={appIcon} alt="" class="header-logo" />
-        <h1>{$_('app.title')}</h1>
-        <div class="header-divider"></div>
-        <div class="status-bar">
-          <div class="status-chip" class:running={status.backend === 'running'}>
-            <span class="status-dot" class:running={status.backend === 'running'} class:stopped={status.backend === 'stopped'}></span>
-            <span>{$_('app.backend')}</span>
-          </div>
-          <div class="status-chip" class:running={status.frontend === 'running'}>
-            <span class="status-dot" class:running={status.frontend === 'running'} class:stopped={status.frontend === 'stopped'}></span>
-            <span>{$_('app.frontend')}</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="header-right">
-        {#if status.frontend === 'running'}
-          <button class="header-btn" onclick={openInBrowser} title={$_('buttons.openBrowser')}>
-            🌐
-          </button>
-          <button class="header-btn" onclick={reloadIframe} title={$_('buttons.reload')}>
-            🔄
-          </button>
-          <button class="header-btn danger" onclick={stopAll} disabled={loading}>
-            ⏹️ {$_('buttons.stop')}
-          </button>
-        {/if}
-
-        <!-- Compact Language Picker -->
-        <div class="lang-picker compact" class:open={langPickerOpen}>
-          <button
-            class="lang-picker-trigger"
-            onclick={() => langPickerOpen = !langPickerOpen}
-            onblur={() => setTimeout(() => langPickerOpen = false, 150)}
-          >
-            <span class="lang-flag">{langFlags[currentLanguage]}</span>
-            <span class="lang-arrow">▾</span>
-          </button>
-          {#if langPickerOpen}
-            <div class="lang-picker-dropdown header-dropdown">
-              {#each SUPPORTED_LOCALES as lang}
-                <button
-                  class="lang-option"
-                  class:active={currentLanguage === lang}
-                  onclick={() => selectLanguage(lang)}
-                >
-                  <span class="lang-flag">{langFlags[lang]}</span>
-                  <span class="lang-name">{$_(`languages.${lang}`)}</span>
-                  {#if currentLanguage === lang}
-                    <span class="lang-check">✓</span>
-                  {/if}
-                </button>
-              {/each}
+      <div class="header-bar">
+        <div class="header-shell">
+          <div class="header-brand">
+            <div class="header-logo-frame" aria-hidden="true">
+              <div class="header-logo-core">
+                <img src={appIcon} alt="" class="header-logo-img" />
+              </div>
             </div>
-          {/if}
-        </div>
+            <div class="header-brand-text">
+              <h1 class="header-app-title">{$_('app.title')}</h1>
+            </div>
+            <div class="header-status-cluster" aria-label="Services">
+              <div class="status-chip" class:running={status.backend === 'running'}>
+                <span class="status-dot" class:running={status.backend === 'running'} class:stopped={status.backend === 'stopped'}></span>
+                <span class="status-chip-label">{$_('app.backend')}</span>
+              </div>
+              <div class="status-chip" class:running={status.frontend === 'running'}>
+                <span class="status-dot" class:running={status.frontend === 'running'} class:stopped={status.frontend === 'stopped'}></span>
+                <span class="status-chip-label">{$_('app.frontend')}</span>
+              </div>
+            </div>
+          </div>
 
-        <button class="header-btn" class:active={showSettings} onclick={() => showSettings = !showSettings} title={$_('settings.title')}>
-          ⚙️
-        </button>
-        <button class="header-btn" class:active={showLogs} onclick={() => { showLogs = !showLogs; showEmbed = !showLogs; }} title={$_('logs.title')}>
-          📋
-        </button>
+          <div class="header-actions">
+            {#if status.frontend === 'running'}
+              <button
+                type="button"
+                class="header-icon-btn"
+                onclick={openInBrowser}
+                title={$_('buttons.openBrowser')}
+                aria-label={$_('buttons.openBrowser')}
+              >
+                🌐
+              </button>
+              <button
+                type="button"
+                class="header-icon-btn"
+                onclick={reloadBooks}
+                disabled={reloadBooksLoading}
+                title={$_('buttons.reload')}
+                aria-label={$_('buttons.reload')}
+              >
+                {#if reloadBooksLoading}⏳{:else}🔄{/if}
+              </button>
+              <button type="button" class="header-btn danger" onclick={stopAll} disabled={loading}>
+                ⏹️ <span class="header-btn-text">{$_('buttons.stop')}</span>
+              </button>
+            {/if}
+
+            <div class="lang-picker compact" class:open={langPickerOpen}>
+              <button
+                type="button"
+                class="lang-picker-trigger"
+                onclick={() => langPickerOpen = !langPickerOpen}
+                onblur={() => setTimeout(() => langPickerOpen = false, 150)}
+                aria-expanded={langPickerOpen}
+                aria-haspopup="listbox"
+              >
+                <span class="lang-flag">{langFlags[currentLanguage]}</span>
+                <span class="lang-arrow">▾</span>
+              </button>
+              {#if langPickerOpen}
+                <div class="lang-picker-dropdown header-dropdown" role="listbox">
+                  {#each SUPPORTED_LOCALES as lang (lang)}
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected={currentLanguage === lang}
+                      class="lang-option"
+                      class:active={currentLanguage === lang}
+                      onclick={() => selectLanguage(lang)}
+                    >
+                      <span class="lang-flag">{langFlags[lang]}</span>
+                      <span class="lang-name">{$_(`languages.${lang}`)}</span>
+                      {#if currentLanguage === lang}
+                        <span class="lang-check">✓</span>
+                      {/if}
+                    </button>
+                  {/each}
+                </div>
+              {/if}
+            </div>
+
+            <button
+              type="button"
+              class="header-icon-btn"
+              class:active={showSettings}
+              onclick={() => showSettings = !showSettings}
+              title={$_('settings.title')}
+              aria-label={$_('settings.title')}
+            >
+              ⚙️
+            </button>
+            <button
+              type="button"
+              class="header-icon-btn"
+              class:active={showLogs}
+              onclick={() => {
+                showLogs = !showLogs;
+                showEmbed = !showLogs;
+              }}
+              title={$_('logs.title')}
+              aria-label={$_('logs.title')}
+            >
+              📋
+            </button>
+          </div>
+        </div>
       </div>
     </header>
   {/if}
@@ -749,119 +809,262 @@
     overflow: hidden;
   }
 
-  /* ===== Compact Header ===== */
+  /* ===== Compact Header (glass shell — aligned with web app) ===== */
   .header {
     position: relative;
     z-index: 100;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 10px 20px;
-    background: rgba(20, 20, 22, 0.95);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border-bottom: 1px solid var(--border);
-    gap: 16px;
+    flex-shrink: 0;
+    padding: 10px 14px 12px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    background: transparent;
     animation: slideDown 200ms var(--ease-out-quart);
   }
 
   @keyframes slideDown {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+      opacity: 0;
+      transform: translateY(-8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
   }
 
-  .header-left {
+  .header-bar {
+    max-width: 100%;
+    margin: 0 auto;
+  }
+
+  .header-shell {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
+    flex-wrap: wrap;
+    padding: 0.65rem 0.8rem;
+    border-radius: 0.95rem;
+    background: linear-gradient(135deg, rgba(26, 26, 31, 0.84) 0%, rgba(14, 14, 17, 0.92) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow:
+      0 1px 0 rgba(255, 255, 255, 0.04) inset,
+      0 0 0 1px rgba(0, 0, 0, 0.22),
+      0 14px 42px rgba(0, 0, 0, 0.38);
   }
 
-  .header-logo {
-    width: 28px;
-    height: 28px;
-    border-radius: 6px;
-  }
-
-  .header-left h1 {
-    font-size: 15px;
-    font-weight: 600;
-    background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-
-  .header-divider {
-    width: 1px;
-    height: 20px;
-    background: var(--border);
-  }
-
-  .header-right {
+  .header-brand {
     display: flex;
-    gap: 6px;
     align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1 1 auto;
+  }
+
+  .header-logo-frame {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: 0.75rem;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .header-logo-frame::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    border: 1px solid var(--launcher-cyan-dim);
+    pointer-events: none;
+  }
+
+  .header-logo-core {
+    display: grid;
+    place-items: center;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.5rem;
+    background: rgba(10, 10, 12, 0.96);
+    border: 1px solid rgba(0, 212, 255, 0.32);
+    box-shadow: 0 0 16px var(--launcher-cyan-glow);
+  }
+
+  .header-logo-img {
+    width: 1.35rem;
+    height: 1.35rem;
+    object-fit: contain;
+    border-radius: 4px;
+  }
+
+  .header-brand-text {
+    min-width: 0;
+  }
+
+  .header-app-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: min(14rem, 42vw);
+  }
+
+  .header-status-cluster {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  @media (min-width: 720px) {
+    .header-status-cluster {
+      margin-left: 0.35rem;
+      padding-left: 0.65rem;
+      border-left: 1px solid rgba(255, 255, 255, 0.06);
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .header-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.05rem;
+    height: 2.05rem;
+    padding: 0;
+    font-size: 0.95rem;
+    line-height: 1;
+    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.55rem;
+    cursor: pointer;
+    transition:
+      background-color 180ms var(--ease-out-quart),
+      border-color 180ms var(--ease-out-quart),
+      box-shadow 180ms var(--ease-out-quart),
+      transform 100ms var(--ease-out-quart);
+  }
+
+  .header-icon-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 18px rgba(0, 212, 255, 0.06);
+  }
+
+  .header-icon-btn.active {
+    background: linear-gradient(180deg, rgba(0, 212, 255, 0.12) 0%, rgba(0, 168, 204, 0.06) 100%);
+    border-color: rgba(0, 212, 255, 0.34);
+    box-shadow: 0 0 20px rgba(0, 212, 255, 0.12);
+  }
+
+  .header-icon-btn:focus-visible {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.45);
+    box-shadow: 0 0 0 2px var(--launcher-focus-ring);
   }
 
   .header-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
-    border-radius: 8px;
+    gap: 0.35rem;
+    padding: 0.42rem 0.65rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0.55rem;
     color: var(--text-primary);
-    font-size: 13px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
     cursor: pointer;
-    transition: background-color 150ms ease, border-color 150ms ease, transform 100ms ease-out;
+    transition:
+      background-color 180ms var(--ease-out-quart),
+      border-color 180ms var(--ease-out-quart),
+      box-shadow 180ms var(--ease-out-quart),
+      transform 100ms var(--ease-out-quart);
   }
 
-  .header-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
+  .header-btn-text {
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-family: inherit;
+    font-size: 0.8125rem;
+    font-weight: 500;
   }
 
-  .header-btn:active {
-    transform: scale(0.97);
+  .header-btn:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
   }
 
-  .header-btn.active {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.3);
+  .header-btn:focus-visible {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.45);
+    box-shadow: 0 0 0 2px var(--launcher-focus-ring);
   }
 
   .header-btn.danger {
-    background: rgba(239, 68, 68, 0.15);
-    border-color: rgba(239, 68, 68, 0.3);
-    color: var(--error);
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.28);
+    color: #fecaca;
   }
 
-  .header-btn.danger:hover {
-    background: rgba(239, 68, 68, 0.25);
-  }
-
-  .status-bar {
-    display: flex;
-    gap: 8px;
+  .header-btn.danger:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.16);
+    border-color: rgba(239, 68, 68, 0.42);
+    box-shadow: 0 0 22px rgba(239, 68, 68, 0.15);
   }
 
   .status-chip {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid var(--border);
-    border-radius: 100px;
-    font-size: 11px;
+    gap: 0.35rem;
+    padding: 0.38rem 0.55rem;
+    border-radius: 0.55rem;
+    font-size: 0.65rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-family: ui-monospace, 'SF Mono', Monaco, monospace;
     color: var(--text-secondary);
-    transition: all 150ms ease;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    transition:
+      border-color 180ms var(--ease-out-quart),
+      background 180ms var(--ease-out-quart),
+      box-shadow 180ms var(--ease-out-quart),
+      color 180ms var(--ease-out-quart);
+  }
+
+  .status-chip-label {
+    line-height: 1.2;
+  }
+
+  .status-chip .status-dot {
+    margin-right: 0;
   }
 
   .status-chip.running {
-    background: rgba(34, 197, 94, 0.1);
-    border-color: rgba(34, 197, 94, 0.2);
-    color: var(--success);
+    color: rgba(220, 252, 231, 0.95);
+    background: rgba(34, 197, 94, 0.08);
+    border-color: rgba(34, 197, 94, 0.24);
+    box-shadow: 0 0 16px rgba(34, 197, 94, 0.12);
   }
 
   /* ===== Main Content ===== */
@@ -1274,18 +1477,34 @@
 
   /* Compact language picker for header */
   .lang-picker.compact .lang-picker-trigger {
-    padding: 6px 10px;
-    border-radius: 8px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid var(--border);
+    min-height: 2.05rem;
+    padding: 0 0.55rem;
+    border-radius: 0.55rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    gap: 0.35rem;
+    transition:
+      background-color 180ms var(--ease-out-quart),
+      border-color 180ms var(--ease-out-quart),
+      box-shadow 180ms var(--ease-out-quart);
   }
 
   .lang-picker.compact .lang-picker-trigger:hover {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 0 16px rgba(0, 212, 255, 0.05);
   }
 
-  .lang-picker.compact .lang-picker-trigger .lang-name {
-    display: none;
+  .lang-picker.compact .lang-picker-trigger:focus-visible {
+    outline: none;
+    border-color: rgba(0, 212, 255, 0.45);
+    box-shadow: 0 0 0 2px var(--launcher-focus-ring);
+  }
+
+  .lang-picker.compact.open .lang-picker-trigger {
+    border-color: rgba(0, 212, 255, 0.34);
+    background: linear-gradient(180deg, rgba(0, 212, 255, 0.1) 0%, rgba(0, 168, 204, 0.05) 100%);
+    box-shadow: 0 0 18px rgba(0, 212, 255, 0.1);
   }
 
   .lang-picker-dropdown.header-dropdown {
@@ -1293,6 +1512,14 @@
     top: calc(100% + 8px);
     z-index: 1000;
     animation: dropdownInDown 150ms var(--ease-out-quart);
+    background: linear-gradient(145deg, rgba(28, 28, 32, 0.96) 0%, rgba(14, 14, 17, 0.98) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.35),
+      0 16px 48px rgba(0, 0, 0, 0.55),
+      0 0 40px rgba(0, 212, 255, 0.04);
   }
 
   @keyframes dropdownInDown {
@@ -1313,6 +1540,14 @@
 
   .lang-picker-dropdown .lang-name {
     color: var(--text-primary);
+  }
+
+  .lang-picker-dropdown.header-dropdown .lang-option.active {
+    background: rgba(0, 212, 255, 0.1);
+  }
+
+  .lang-picker-dropdown.header-dropdown .lang-check {
+    color: var(--launcher-cyan);
   }
 
   .icon-btn-hero {
