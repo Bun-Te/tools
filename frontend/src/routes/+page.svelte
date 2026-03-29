@@ -261,11 +261,16 @@
 		return { passed: result.passed, hasData: true };
 	}
 
-	function getVolatilityLabel(vol: number, cost: number): { label: string; color: string } {
-		// For bonus modes, show "BONUS" badge instead of misleading volatility
-		if (cost > 1) {
-			return { label: 'BONUS', color: 'violet' };
+	function handleModeCardClick(event: MouseEvent, mode: string): void {
+		const target = event.target as HTMLElement | null;
+		const complianceClicked = Boolean(target?.closest('[data-mode-compliance="true"]'));
+		void selectMode(mode);
+		if (complianceClicked) {
+			setPanel('overview');
 		}
+	}
+
+	function getVolatilityLabel(vol: number): { label: string; color: string } {
 		// For base mode, use traditional CV-based classification
 		if (vol < 3) return { label: 'LOW', color: 'emerald' };
 		if (vol < 7) return { label: 'MEDIUM', color: 'gold' };
@@ -453,57 +458,71 @@
 					</div>
 
 					<div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-						{#each indexInfo.modes as mode, i}
+						{#each indexInfo.modes as mode, i (mode.mode)}
 							{@const isSelected = selectedMode === mode.mode}
-							{@const modeVol = compareItems.find(c => c.mode === mode.mode)?.volatility ?? 5}
-							{@const volLabel = getVolatilityLabel(modeVol, mode.cost)}
+							{@const modeCompare = compareItems.find(c => c.mode === mode.mode)}
+							{@const modeVol = modeCompare?.volatility ?? 5}
+							{@const modeCostAdjVol = modeCompare?.cost_adj_volatility ?? modeVol}
+							{@const modeVolForBadge = mode.cost > 1 ? modeCostAdjVol : modeVol}
+							{@const modeBreakeven = modeCompare?.breakeven_rate ?? 0}
+							{@const volLabel = getVolatilityLabel(modeVolForBadge)}
 							{@const compliance = getModeComplianceStatus(mode.mode)}
 							<button
 								class="mode-btn text-left group {isSelected ? 'active' : ''}"
-								onclick={() => selectMode(mode.mode)}
+								onclick={(event) => handleModeCardClick(event, mode.mode)}
 								style="animation-delay: {i * 50}ms"
 							>
-								<div class="flex items-center justify-between mb-3">
-									<div class="flex items-center gap-2">
-										<span class="font-display text-lg text-[var(--color-light)] tracking-wide uppercase">{mode.mode}</span>
+								<div class="flex items-start justify-between gap-3 mb-3">
+									<div class="min-w-0">
+										<div class="flex items-center gap-2">
+											<span class="font-display text-lg text-[var(--color-light)] tracking-wide uppercase truncate">{mode.mode}</span>
+											<span class="mode-cost-chip font-mono">{mode.cost}x</span>
+										</div>
 										<!-- Compliance indicator -->
-										{#if compliance.hasData}
-											<span
-												class="compliance-indicator {compliance.passed ? 'passed' : 'failed'}"
-												title={compliance.passed ? 'Compliance passed' : 'Compliance issues found'}
-												aria-hidden="true"
-											>
-												{#if compliance.passed}
-													<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-														<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-													</svg>
-												{:else}
-													<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
-														<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
-													</svg>
-												{/if}
-											</span>
-										{/if}
+										<div class="mt-1 flex items-center gap-2">
+											{#if compliance.hasData}
+												<span
+													class="mode-compliance-pill {compliance.passed ? 'passed' : 'failed'}"
+													title={compliance.passed ? 'Compliance passed — open overview' : 'Compliance issues found — open overview'}
+													data-mode-compliance="true"
+												>
+													<span class="compliance-indicator {compliance.passed ? 'passed' : 'failed'}" aria-hidden="true">
+														{#if compliance.passed}
+															<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+															</svg>
+														{:else}
+															<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2.5">
+																<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+															</svg>
+														{/if}
+													</span>
+													<span class="text-[10px] font-mono uppercase tracking-wide">
+														{compliance.passed ? 'COMPLIANT' : 'NON-COMPLIANT'}
+													</span>
+												</span>
+											{/if}
+										</div>
 									</div>
-									<span class="badge badge-{volLabel.color} text-[10px]">{volLabel.label}</span>
+									<span class="badge badge-{volLabel.color} text-[10px] shrink-0">{volLabel.label}</span>
 								</div>
 
-								<div class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs font-mono">
-									<div class="flex justify-between">
+								<div class="grid grid-cols-2 gap-2.5 text-xs font-mono">
+									<div class="mode-metric">
 										<span class="text-[var(--color-mist)]">{$_('metrics.rtp')}</span>
 										<span class="text-[var(--color-emerald)]">{formatPercent(mode.rtp)}</span>
 									</div>
-									<div class="flex justify-between">
+									<div class="mode-metric">
 										<span class="text-[var(--color-mist)]">{$_('gameModes.hit')}</span>
 										<span class="text-[var(--color-cyan)]">{formatPercent(mode.hit_rate)}</span>
 									</div>
-									<div class="flex justify-between">
+									<div class="mode-metric">
 										<span class="text-[var(--color-mist)]">{$_('gameModes.max')}</span>
 										<span class="text-[var(--color-gold)]">{formatMultiplier(mode.max_payout)}</span>
 									</div>
-									<div class="flex justify-between">
-										<span class="text-[var(--color-mist)]">{$_('metrics.cost')}</span>
-										<span class="text-[var(--color-light)]">{mode.cost}x</span>
+									<div class="mode-metric">
+										<span class="text-[var(--color-mist)]">BREAKEVEN</span>
+										<span class="text-[var(--color-violet)]">{(modeBreakeven * 100).toFixed(1)}%</span>
 									</div>
 								</div>
 
