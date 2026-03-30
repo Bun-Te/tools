@@ -23,6 +23,9 @@
     "settings": {
         "title": "Configuración",
         "libraryPath": "Ruta de publish files",
+        "libraryPathDropHint": "Arrastre aquí la carpeta publish_files o una carpeta padre que contenga publish_files (con index.json).",
+        "libraryPathDropHintReplace": "Suelte otra carpeta publish_files (o su carpeta padre) aquí para reemplazar la ruta actual.",
+        "libraryPathUpdated": "Ruta de la biblioteca actualizada.",
         "frontendPort": "Puerto de frontend",
         "language": "Idioma",
         "autoLoadBooks": "Cargar libros automáticamente",

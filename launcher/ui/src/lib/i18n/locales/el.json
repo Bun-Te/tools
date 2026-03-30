@@ -23,6 +23,9 @@
     "settings": {
         "title": "Ρυθμίσεις",
         "libraryPath": "Διαδρομή publish files",
+        "libraryPathDropHint": "Σύρετε εδώ το φάκελο publish_files ή έναν γονικό φάκελο που περιέχει publish_files (με index.json).",
+        "libraryPathDropHintReplace": "Αποθέστε άλλον φάκελο publish_files (ή τον γονικό του) εδώ για να αντικαταστήσετε την τρέχουσα διαδρομή.",
+        "libraryPathUpdated": "Η διαδρομή βιβλιοθήκης ενημερώθηκε.",
         "frontendPort": "Θύρα frontend",
         "language": "Γλώσσα",
         "autoLoadBooks": "Αυτόματη φόρτωση βιβλίων",

@@ -65,6 +65,9 @@
 	// Mode info for cost-aware display
 	let modeInfo = $state<SimpleModeInfo | null>(null);
 
+	/** Upper bound for target RTP in bucket optimization (98%). */
+	const maxOptimizerTargetRtp = 0.98;
+
 	let targetRtp = $state(0.97);
 	let buckets = $state<BucketConfig[]>([]);
 
@@ -184,9 +187,9 @@
 			// Restore input format if present (backwards compatible)
 			inputFormat = (short as any).f ?? 'absolute';
 
-			// Clamp RTP to valid range (0.01 - 0.99) to prevent validation errors
+			// Clamp RTP to valid range (0.01 - maxOptimizerTargetRtp) to prevent validation errors
 			const parsedRtp = short.r / 100;
-			targetRtp = Math.max(0.01, Math.min(0.99, parsedRtp));
+			targetRtp = Math.max(0.01, Math.min(maxOptimizerTargetRtp, parsedRtp));
 			buckets = short.b.map(([min, max, t, v], i) => {
 				const type = TYPE_REVERSE[t] ?? 'frequency';
 				return {
@@ -683,11 +686,11 @@
 	// Adjust RTP to feasible value
 	function adjustToFeasibleRTP() {
 		if (analysisInfo?.suggested_rtp && analysisInfo.suggested_rtp > 0) {
-			targetRtp = analysisInfo.suggested_rtp;
+			targetRtp = Math.min(maxOptimizerTargetRtp, analysisInfo.suggested_rtp);
 			rtpWarning = null;
 			loadPresetsForUI();
 		} else if (modeAnalysis?.suggested_rtp && modeAnalysis.suggested_rtp > 0) {
-			targetRtp = modeAnalysis.suggested_rtp;
+			targetRtp = Math.min(maxOptimizerTargetRtp, modeAnalysis.suggested_rtp);
 			rtpWarning = null;
 			loadPresetsForUI();
 		}
@@ -770,7 +773,7 @@
 			<input
 				type="range"
 				min="0.90"
-				max="0.99"
+				max={maxOptimizerTargetRtp}
 				step="0.005"
 				bind:value={targetRtp}
 				class="flex-1 h-1.5 bg-[var(--color-slate)] rounded-full appearance-none cursor-pointer
@@ -939,7 +942,7 @@
 			<input
 				type="range"
 				min="0.90"
-				max="0.99"
+				max={maxOptimizerTargetRtp}
 				step="0.005"
 				bind:value={targetRtp}
 				class="flex-1 h-1.5 bg-[var(--color-slate)] rounded-full appearance-none cursor-pointer

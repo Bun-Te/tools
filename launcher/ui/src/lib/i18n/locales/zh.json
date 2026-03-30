@@ -23,6 +23,9 @@
     "settings": {
         "title": "设置",
         "libraryPath": "Publish files 路径",
+        "libraryPathDropHint": "将 publish_files 文件夹或包含 publish_files（含 index.json）的上级文件夹拖放到此处。",
+        "libraryPathDropHintReplace": "拖放另一个 publish_files（或其上级文件夹）到此处以替换当前路径。",
+        "libraryPathUpdated": "库路径已更新。",
         "frontendPort": "前端端口",
         "language": "语言",
         "autoLoadBooks": "自动加载书籍",

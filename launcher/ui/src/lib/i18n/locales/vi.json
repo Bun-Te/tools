@@ -23,6 +23,9 @@
     "settings": {
         "title": "Cài đặt",
         "libraryPath": "Đường dẫn publish files",
+        "libraryPathDropHint": "Kéo thả thư mục publish_files hoặc thư mục cha chứa publish_files (có index.json) vào đây.",
+        "libraryPathDropHintReplace": "Thả một thư mục publish_files khác (hoặc thư mục cha) vào đây để thay đường dẫn hiện tại.",
+        "libraryPathUpdated": "Đã cập nhật đường dẫn thư viện.",
         "frontendPort": "Cổng frontend",
         "language": "Ngôn ngữ",
         "autoLoadBooks": "Tự động tải sách",

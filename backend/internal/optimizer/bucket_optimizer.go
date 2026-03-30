@@ -1578,8 +1578,8 @@ func ValidateBuckets(buckets []BucketConfig) error {
 
 // ValidateBruteForceConfig validates brute force optimization config
 func ValidateBruteForceConfig(config *BucketOptimizerConfig) error {
-	if config.TargetRTP <= 0 || config.TargetRTP > 1 {
-		return fmt.Errorf("target_rtp must be between 0 and 1")
+	if config.TargetRTP <= 0 || config.TargetRTP > common.MaxOptimizerTargetRTP {
+		return fmt.Errorf("target_rtp must be between 0 and %.2f", common.MaxOptimizerTargetRTP)
 	}
 	if config.RTPTolerance < 0 {
 		return fmt.Errorf("rtp_tolerance cannot be negative")

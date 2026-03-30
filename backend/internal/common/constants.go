@@ -26,6 +26,8 @@ const (
 // Optimizer constants
 const (
 	BaseWeight uint64 = 1_000_000_000_000 // 1 trillion base for weight calculations
+	// MaxOptimizerTargetRTP is the highest allowed target RTP for bucket optimization (98%).
+	MaxOptimizerTargetRTP = 0.98
 )
 
 // DefaultBetLevels returns standard bet levels for RGS compatibility.

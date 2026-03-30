@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+
+	"lutexplorer/internal/common"
 )
 
 // PlayerProfile defines a volatility/playstyle preset
@@ -367,8 +369,8 @@ func (g *ConfigGenerator) getProfileName(profile PlayerProfile) string {
 
 // ValidateGeneratedConfig validates a generated config is mathematically sound
 func ValidateGeneratedConfig(config *GeneratedConfig) error {
-	if config.TargetRTP <= 0 || config.TargetRTP > 1 {
-		return fmt.Errorf("invalid target RTP: %.4f", config.TargetRTP)
+	if config.TargetRTP <= 0 || config.TargetRTP > common.MaxOptimizerTargetRTP {
+		return fmt.Errorf("invalid target RTP: %.4f (max %.2f)", config.TargetRTP, common.MaxOptimizerTargetRTP)
 	}
 
 	if config.MaxWin <= 0 {

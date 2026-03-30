@@ -23,6 +23,9 @@
     "settings": {
         "title": "Asetukset",
         "libraryPath": "Publish files -polku",
+        "libraryPathDropHint": "Vedä publish_files-kansio tai yläkansio, jossa on publish_files (index.json), tähän.",
+        "libraryPathDropHintReplace": "Pudota toinen publish_files-kansio (tai sen yläkansio) tähän korvataksesi nykyisen polun.",
+        "libraryPathUpdated": "Kirjastopolku päivitetty.",
         "frontendPort": "Frontend-portti",
         "language": "Kieli",
         "autoLoadBooks": "Lataa kirjat automaattisesti",

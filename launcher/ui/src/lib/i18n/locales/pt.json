@@ -23,6 +23,9 @@
     "settings": {
         "title": "Configurações",
         "libraryPath": "Caminho publish files",
+        "libraryPathDropHint": "Arraste a pasta publish_files ou uma pasta pai que contenha publish_files (com index.json) para aqui.",
+        "libraryPathDropHintReplace": "Solte outra pasta publish_files (ou a pasta pai) aqui para substituir o caminho atual.",
+        "libraryPathUpdated": "Caminho da biblioteca atualizado.",
         "frontendPort": "Porta do frontend",
         "language": "Idioma",
         "autoLoadBooks": "Carregar livros automaticamente",

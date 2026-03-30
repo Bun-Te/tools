@@ -23,6 +23,9 @@
     "settings": {
         "title": "Paramètres",
         "libraryPath": "Chemin publish files",
+        "libraryPathDropHint": "Glissez-déposez le dossier publish_files ici, ou un dossier parent contenant publish_files (avec index.json).",
+        "libraryPathDropHintReplace": "Déposez un autre dossier publish_files (ou son parent) ici pour remplacer le chemin actuel.",
+        "libraryPathUpdated": "Chemin de la bibliothèque mis à jour.",
         "frontendPort": "Port du frontend",
         "language": "Langue",
         "autoLoadBooks": "Chargement auto des livres",

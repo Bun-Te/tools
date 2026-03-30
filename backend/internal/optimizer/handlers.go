@@ -349,6 +349,9 @@ func (h *Handlers) HandleBucketOptimize(w http.ResponseWriter, r *http.Request) 
 	if req.TargetRTP <= 0 {
 		req.TargetRTP = 0.97
 	}
+	if req.TargetRTP > common.MaxOptimizerTargetRTP {
+		req.TargetRTP = common.MaxOptimizerTargetRTP
+	}
 	if req.RTPTolerance <= 0 {
 		req.RTPTolerance = 0.001
 	}
@@ -560,6 +563,9 @@ func (h *Handlers) HandleSuggestBuckets(w http.ResponseWriter, r *http.Request) 
 	if rtpStr := r.URL.Query().Get("target_rtp"); rtpStr != "" {
 		if parsed, err := strconv.ParseFloat(rtpStr, 64); err == nil && parsed > 0 && parsed < 1 {
 			targetRTP = parsed
+			if targetRTP > common.MaxOptimizerTargetRTP {
+				targetRTP = common.MaxOptimizerTargetRTP
+			}
 		}
 	}
 
@@ -645,6 +651,9 @@ func (h *Handlers) HandleAnalyzeMode(w http.ResponseWriter, r *http.Request) {
 	if rtpStr := r.URL.Query().Get("target_rtp"); rtpStr != "" {
 		if parsed, err := strconv.ParseFloat(rtpStr, 64); err == nil && parsed > 0 {
 			targetRTP = parsed
+			if targetRTP <= 1 && targetRTP > common.MaxOptimizerTargetRTP {
+				targetRTP = common.MaxOptimizerTargetRTP
+			}
 		}
 	}
 
@@ -681,6 +690,9 @@ func (h *Handlers) HandleGenerateConfigs(w http.ResponseWriter, r *http.Request)
 	if rtpStr := r.URL.Query().Get("target_rtp"); rtpStr != "" {
 		if parsed, err := strconv.ParseFloat(rtpStr, 64); err == nil && parsed > 0 && parsed <= 1 {
 			targetRTP = parsed
+			if targetRTP > common.MaxOptimizerTargetRTP {
+				targetRTP = common.MaxOptimizerTargetRTP
+			}
 		}
 	}
 
@@ -712,8 +724,12 @@ func (h *Handlers) HandleGenerateConfig(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// Apply defaults
-	if req.TargetRTP <= 0 || req.TargetRTP > 1 {
+	if req.TargetRTP <= 0 {
 		req.TargetRTP = 0.96
+	} else if req.TargetRTP > 1 {
+		req.TargetRTP = 0.96
+	} else if req.TargetRTP > common.MaxOptimizerTargetRTP {
+		req.TargetRTP = common.MaxOptimizerTargetRTP
 	}
 	if req.MaxWin <= 0 {
 		req.MaxWin = 5000
@@ -774,6 +790,9 @@ func (h *Handlers) HandleGenerateConfigsForMode(w http.ResponseWriter, r *http.R
 	if rtpStr := r.URL.Query().Get("target_rtp"); rtpStr != "" {
 		if parsed, err := strconv.ParseFloat(rtpStr, 64); err == nil && parsed > 0 {
 			targetRTP = parsed
+			if targetRTP <= 1 && targetRTP > common.MaxOptimizerTargetRTP {
+				targetRTP = common.MaxOptimizerTargetRTP
+			}
 		}
 	}
 
@@ -937,6 +956,9 @@ func (h *Handlers) HandleBruteForceOptimizeWS(w http.ResponseWriter, r *http.Req
 	// Apply defaults
 	if req.TargetRTP <= 0 {
 		req.TargetRTP = 0.97
+	}
+	if req.TargetRTP > common.MaxOptimizerTargetRTP {
+		req.TargetRTP = common.MaxOptimizerTargetRTP
 	}
 	if req.RTPTolerance <= 0 {
 		req.RTPTolerance = 0.0001 // Higher precision for brute force

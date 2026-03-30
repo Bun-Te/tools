@@ -23,6 +23,9 @@
     "settings": {
         "title": "Настройки",
         "libraryPath": "Путь к publish files",
+        "libraryPathDropHint": "Перетащите сюда папку publish_files или родительскую папку, в которой лежит publish_files с index.json.",
+        "libraryPathDropHintReplace": "Перетащите сюда другую папку publish_files (или родительскую) — чтобы заменить текущий путь.",
+        "libraryPathUpdated": "Путь к библиотеке обновлён.",
         "frontendPort": "Порт фронтенда",
         "language": "Язык",
         "autoLoadBooks": "Автозагрузка книг",

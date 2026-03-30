@@ -23,6 +23,9 @@
     "settings": {
         "title": "Settings",
         "libraryPath": "Publish Files Path",
+        "libraryPathDropHint": "Drag and drop the publish_files folder here, or a parent folder that contains publish_files (with index.json).",
+        "libraryPathDropHintReplace": "Drop another publish_files folder (or its parent) here to replace the current path.",
+        "libraryPathUpdated": "Library path updated.",
         "frontendPort": "Frontend Port",
         "language": "Language",
         "autoLoadBooks": "Auto-load books",

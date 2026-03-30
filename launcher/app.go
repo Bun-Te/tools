@@ -435,6 +435,45 @@ func (a *App) SelectLibraryFolder() (string, error) {
 	return path, nil
 }
 
+// resolvePublishFilesDir returns the absolute directory to pass as -dir: either the dropped
+// folder if it contains index.json, or dropped/publish_files if that contains index.json.
+func resolvePublishFilesDir(dropped string) (string, error) {
+	p := filepath.Clean(dropped)
+	st, err := os.Stat(p)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+	if !st.IsDir() {
+		return "", fmt.Errorf("not a directory: %s", p)
+	}
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return "", fmt.Errorf("invalid path: %w", err)
+	}
+	indexHere := filepath.Join(abs, "index.json")
+	if _, err := os.Stat(indexHere); err == nil {
+		return abs, nil
+	}
+	nested := filepath.Join(abs, "publish_files")
+	indexNested := filepath.Join(nested, "index.json")
+	if _, err := os.Stat(indexNested); err == nil {
+		return nested, nil
+	}
+	return "", fmt.Errorf("could not find index.json: drop the publish_files folder or its parent library folder")
+}
+
+// SetLibraryPathResolved validates dropped path, resolves to publish_files root, updates config.
+func (a *App) SetLibraryPathResolved(droppedPath string) (string, error) {
+	resolved, err := resolvePublishFilesDir(droppedPath)
+	if err != nil {
+		return "", err
+	}
+	a.mu.Lock()
+	a.config.LibraryPath = resolved
+	a.mu.Unlock()
+	return resolved, nil
+}
+
 // StartBackend starts the Go backend
 func (a *App) StartBackend() error {
 	a.mu.Lock()

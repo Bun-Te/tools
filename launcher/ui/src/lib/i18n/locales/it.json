@@ -23,6 +23,9 @@
     "settings": {
         "title": "Impostazioni",
         "libraryPath": "Percorso publish files",
+        "libraryPathDropHint": "Trascina qui la cartella publish_files o una cartella padre che contenga publish_files (con index.json).",
+        "libraryPathDropHintReplace": "Trascina un'altra cartella publish_files (o la cartella padre) qui per sostituire il percorso attuale.",
+        "libraryPathUpdated": "Percorso libreria aggiornato.",
         "frontendPort": "Porta frontend",
         "language": "Lingua",
         "autoLoadBooks": "Caricamento auto libri",

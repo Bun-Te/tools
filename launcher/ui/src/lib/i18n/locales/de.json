@@ -23,6 +23,9 @@
     "settings": {
         "title": "Einstellungen",
         "libraryPath": "Publish Files Pfad",
+        "libraryPathDropHint": "Ziehen Sie den Ordner publish_files oder einen übergeordneten Ordner mit publish_files (index.json) hierher.",
+        "libraryPathDropHintReplace": "Legen Sie einen anderen publish_files-Ordner (oder dessen übergeordneten Ordner) hier ab, um den aktuellen Pfad zu ersetzen.",
+        "libraryPathUpdated": "Bibliothekspfad aktualisiert.",
         "frontendPort": "Frontend-Port",
         "language": "Sprache",
         "autoLoadBooks": "Bücher automatisch laden",

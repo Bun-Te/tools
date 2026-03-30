@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import * as App from './lib/wailsjs/go/main/App';
   import appIcon from './assets/appicon.png';
-  import { EventsOn } from './lib/wailsjs/runtime/runtime';
+  import { EventsOn, OnFileDrop, OnFileDropOff } from './lib/wailsjs/runtime/runtime';
   import { main } from './lib/wailsjs/go/models';
   import { _, setLocale, SUPPORTED_LOCALES, type SupportedLocale } from './lib/i18n';
 
@@ -65,43 +65,93 @@
   // Language
   let currentLanguage: SupportedLocale = $state('en');
 
-  onMount(async () => {
-    // Wait for Wails to be ready
-    await new Promise(resolve => setTimeout(resolve, 100));
+  /** Wails sometimes leaves `wails-drop-target-active` after drop — cyan “stuck” highlight */
+  let libraryDropFlashTimer: ReturnType<typeof setTimeout> | null = null;
+  let libraryDropSuccessFlash = $state(false);
 
-    try {
-      // Load language from config and update i18n
-      const lang = await App.GetLanguage() as SupportedLocale;
-      currentLanguage = SUPPORTED_LOCALES.includes(lang) ? lang : 'en';
-      setLocale(currentLanguage);
-
-      // Load initial data
-      await refreshStatus();
-      config = await App.GetConfig();
-      deps = await App.CheckDependencies();
-      frontendUrl = await App.GetFrontendURL();
-
-      await refreshLauncherUpdateStatus({ showModalIfOutdated: true });
-
-      // Subscribe to log events
-      EventsOn('log', (data: LogEntry) => {
-        logs.push(`[${data.source.toUpperCase()}] ${data.message}`);
-        if (logs.length > 200) {
-          logs = logs.slice(-200);
-        }
+  function stripWailsDropTargetActive() {
+    const run = () => {
+      document.querySelectorAll('.wails-drop-target-active').forEach(el => {
+        el.classList.remove('wails-drop-target-active');
       });
+    };
+    requestAnimationFrame(run);
+    setTimeout(run, 0);
+    setTimeout(run, 80);
+  }
 
-      // Subscribe to status changes
-      EventsOn('statusChange', (newStatus: Status) => {
-        status = newStatus;
-      });
+  function flashLibraryPathReplaced() {
+    if (libraryDropFlashTimer) clearTimeout(libraryDropFlashTimer);
+    libraryDropSuccessFlash = true;
+    libraryDropFlashTimer = setTimeout(() => {
+      libraryDropSuccessFlash = false;
+      libraryDropFlashTimer = null;
+    }, 2000);
+  }
 
-      // Poll status every 2 seconds
-      setInterval(refreshStatus, 2000);
-    } catch (e) {
-      console.error('Failed to initialize:', e);
-      error = 'Failed to connect to backend';
-    }
+  onMount(() => {
+    let cancelled = false;
+
+    void (async () => {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      if (cancelled) return;
+
+      OnFileDrop((_x, _y, paths) => {
+        void (async () => {
+          const raw = paths?.[0];
+          try {
+            if (!raw) {
+              stripWailsDropTargetActive();
+              return;
+            }
+            const resolved = await App.SetLibraryPathResolved(raw);
+            config.libraryPath = resolved;
+            error = '';
+            await refreshStatus();
+            stripWailsDropTargetActive();
+            flashLibraryPathReplaced();
+          } catch (e: unknown) {
+            error = e instanceof Error ? e.message : String(e);
+            stripWailsDropTargetActive();
+          }
+        })();
+      }, true);
+
+      try {
+        const lang = await App.GetLanguage() as SupportedLocale;
+        currentLanguage = SUPPORTED_LOCALES.includes(lang) ? lang : 'en';
+        setLocale(currentLanguage);
+
+        await refreshStatus();
+        config = await App.GetConfig();
+        deps = await App.CheckDependencies();
+        frontendUrl = await App.GetFrontendURL();
+
+        await refreshLauncherUpdateStatus({ showModalIfOutdated: true });
+
+        EventsOn('log', (data: LogEntry) => {
+          logs.push(`[${data.source.toUpperCase()}] ${data.message}`);
+          if (logs.length > 200) {
+            logs = logs.slice(-200);
+          }
+        });
+
+        EventsOn('statusChange', (newStatus: Status) => {
+          status = newStatus;
+        });
+
+        setInterval(refreshStatus, 2000);
+      } catch (e) {
+        console.error('Failed to initialize:', e);
+        error = 'Failed to connect to backend';
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (libraryDropFlashTimer) clearTimeout(libraryDropFlashTimer);
+      OnFileDropOff();
+    };
   });
 
   async function refreshStatus() {
@@ -505,7 +555,10 @@
       <div class="settings-panel">
         <h2>{$_('settings.title')}</h2>
 
-        <div class="setting-group">
+        <div
+          class="setting-group library-path-drop-zone"
+          class:library-drop-success-flash={libraryDropSuccessFlash}
+        >
           <label for="library-path">{$_('settings.libraryPath')}</label>
           <div class="input-with-button">
             <input id="library-path" type="text" bind:value={config.libraryPath} placeholder="/path/to/publish_files" />
@@ -513,6 +566,10 @@
               {selectingFolder ? '...' : $_('buttons.browse')}
             </button>
           </div>
+          <p class="setting-hint">{$_('settings.libraryPathDropHint')}</p>
+          {#if libraryDropSuccessFlash}
+            <p class="library-drop-ok">{$_('settings.libraryPathUpdated')}</p>
+          {/if}
         </div>
 
         <div class="setting-group">
@@ -675,7 +732,18 @@
           </div>
 
           <!-- Action buttons -->
-          <div class="hero-actions">
+          <div
+            class="hero-actions welcome-library-drop"
+            class:library-drop-success-flash={libraryDropSuccessFlash}
+          >
+            <p class="welcome-drop-hint">
+              {status.libraryPath
+                ? $_('settings.libraryPathDropHintReplace')
+                : $_('settings.libraryPathDropHint')}
+            </p>
+            {#if libraryDropSuccessFlash}
+              <p class="welcome-drop-ok">{$_('settings.libraryPathUpdated')}</p>
+            {/if}
             {#if !status.libraryPath}
               <button class="btn-hero" onclick={selectFolder} disabled={selectingFolder}>
                 <span class="btn-icon">📂</span>
@@ -1254,6 +1322,55 @@
     margin-bottom: 24px;
   }
 
+  .hero-actions.welcome-library-drop {
+    --wails-drop-target: drop;
+    flex-wrap: wrap;
+    padding: 16px 20px;
+    border-radius: 14px;
+    border: 1px dashed rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.15);
+    transition:
+      border-color 150ms ease,
+      background 150ms ease,
+      box-shadow 150ms ease;
+  }
+
+  .hero-actions.welcome-library-drop:global(.wails-drop-target-active) {
+    border-color: var(--launcher-cyan-dim);
+    background: rgba(0, 212, 255, 0.06);
+    box-shadow: 0 0 0 1px var(--launcher-cyan-dim);
+  }
+
+  .hero-actions.welcome-library-drop.library-drop-success-flash {
+    border-color: rgba(34, 197, 94, 0.75);
+    background: rgba(34, 197, 94, 0.1);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.45);
+  }
+
+  .hero-actions.welcome-library-drop.library-drop-success-flash:global(.wails-drop-target-active) {
+    border-color: rgba(34, 197, 94, 0.75);
+    background: rgba(34, 197, 94, 0.12);
+    box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5);
+  }
+
+  .welcome-drop-hint {
+    flex: 1 0 100%;
+    text-align: center;
+    margin: 0 0 4px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .welcome-drop-ok {
+    flex: 1 0 100%;
+    text-align: center;
+    margin: 0 0 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(74, 222, 128, 0.95);
+  }
+
   .btn-hero {
     display: flex;
     align-items: center;
@@ -1675,6 +1792,30 @@
 
   .input-with-button input {
     flex: 1;
+  }
+
+  .library-path-drop-zone {
+    --wails-drop-target: drop;
+    transition: box-shadow 150ms ease;
+  }
+
+  .library-path-drop-zone:global(.wails-drop-target-active) {
+    box-shadow: 0 0 0 2px var(--launcher-cyan-dim), 0 0 0 1px var(--border-subtle), var(--shadow-sm);
+  }
+
+  .library-path-drop-zone.library-drop-success-flash {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.55), 0 0 0 1px var(--border-subtle), var(--shadow-sm);
+  }
+
+  .library-path-drop-zone.library-drop-success-flash:global(.wails-drop-target-active) {
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.6), 0 0 0 1px var(--border-subtle), var(--shadow-sm);
+  }
+
+  .library-drop-ok {
+    margin: 10px 0 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: rgba(74, 222, 128, 0.95);
   }
 
   .deps-list {

@@ -23,6 +23,9 @@
     "settings": {
         "title": "การตั้งค่า",
         "libraryPath": "เส้นทาง publish files",
+        "libraryPathDropHint": "ลากโฟลเดอร์ publish_files หรือโฟลเดอร์แม่ที่มี publish_files (พร้อม index.json) มาวางที่นี่",
+        "libraryPathDropHintReplace": "วางโฟลเดอร์ publish_files อื่น (หรือโฟลเดอร์แม่) ที่นี่เพื่อแทนที่พาธปัจจุบัน",
+        "libraryPathUpdated": "อัปเดตเส้นทางไลบรารีแล้ว",
         "frontendPort": "พอร์ตฟรอนท์เอนด์",
         "language": "ภาษา",
         "autoLoadBooks": "โหลดหนังสืออัตโนมัติ",

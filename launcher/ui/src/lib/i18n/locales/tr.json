@@ -23,6 +23,9 @@
     "settings": {
         "title": "Ayarlar",
         "libraryPath": "Publish files yolu",
+        "libraryPathDropHint": "publish_files klasörünü veya içinde publish_files (index.json ile) olan üst klasörü buraya sürükleyin.",
+        "libraryPathDropHintReplace": "Geçerli yolu değiştirmek için başka bir publish_files klasörünü (veya üst klasörünü) buraya bırakın.",
+        "libraryPathUpdated": "Kütüphane yolu güncellendi.",
         "frontendPort": "Frontend portu",
         "language": "Dil",
         "autoLoadBooks": "Kitapları otomatik yükle",
