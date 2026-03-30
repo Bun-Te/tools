@@ -4,6 +4,7 @@ export { default as DistributionTable } from './DistributionTable.svelte';
 export { default as ModeComparison } from './ModeComparison.svelte';
 export { default as EventModal } from './EventModal.svelte';
 export { default as BooksLoadingPanel } from './BooksLoadingPanel.svelte';
+export { default as OverviewBooksLogPanel } from './OverviewBooksLogPanel.svelte';
 export { default as LGSPanel } from './LGSPanel.svelte';
 export { default as EventViewerPanel } from './EventViewerPanel.svelte';
 export { default as WelcomeModal } from './WelcomeModal.svelte';

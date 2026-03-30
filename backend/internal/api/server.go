@@ -23,16 +23,16 @@ import (
 
 // Server is the HTTP API server.
 type Server struct {
-	loader             *lut.Loader
-	addr               string
-	lgsHandlers        *lgs.Handlers
-	lgsSessions        *lgs.SessionManager
-	crowdsimHandlers   *crowdsim.Handlers
-	optimizerHandlers  *optimizer.Handlers
-	convexoptHandlers  *convexopt.Handlers
-	wsHub              *ws.Hub
-	bgLoader           *bgloader.BackgroundLoader
-	csvWatcher         *watcher.FileWatcher
+	loader            *lut.Loader
+	addr              string
+	lgsHandlers       *lgs.Handlers
+	lgsSessions       *lgs.SessionManager
+	crowdsimHandlers  *crowdsim.Handlers
+	optimizerHandlers *optimizer.Handlers
+	convexoptHandlers *convexopt.Handlers
+	wsHub             *ws.Hub
+	bgLoader          *bgloader.BackgroundLoader
+	csvWatcher        *watcher.FileWatcher
 }
 
 // NewServer creates a new API server.
@@ -89,7 +89,9 @@ func (s *Server) Start() error {
 	mux.HandleFunc("GET /api/mode/{mode}/distribution", s.handleModeDistribution)
 	mux.HandleFunc("GET /api/mode/{mode}/distribution/bucket", s.handleModeBucketDistribution)
 	mux.HandleFunc("GET /api/mode/{mode}/outcomes", s.handleModeOutcomes)
+	mux.HandleFunc("GET /api/mode/{mode}/books-log", s.handleModeBooksLog)
 	mux.HandleFunc("GET /api/compare", s.handleCompare)
+	mux.HandleFunc("GET /api/books-log", s.handleAllModesBooksLog)
 
 	// Events API (lazy loading - only loads what's needed)
 	mux.HandleFunc("POST /api/mode/{mode}/events/load", s.handleLoadEvents)
@@ -200,7 +202,9 @@ func (s *Server) GetHandler() http.Handler {
 	mux.HandleFunc("GET /api/mode/{mode}/distribution", s.handleModeDistribution)
 	mux.HandleFunc("GET /api/mode/{mode}/distribution/bucket", s.handleModeBucketDistribution)
 	mux.HandleFunc("GET /api/mode/{mode}/outcomes", s.handleModeOutcomes)
+	mux.HandleFunc("GET /api/mode/{mode}/books-log", s.handleModeBooksLog)
 	mux.HandleFunc("GET /api/compare", s.handleCompare)
+	mux.HandleFunc("GET /api/books-log", s.handleAllModesBooksLog)
 
 	// Events API (lazy loading - only loads what's needed)
 	mux.HandleFunc("POST /api/mode/{mode}/events/load", s.handleLoadEvents)
@@ -293,7 +297,6 @@ func (s *Server) GetHandler() http.Handler {
 
 	return loggingHandler
 }
-
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
 	common.WriteSuccess(w, map[string]string{"status": "ok"})
@@ -625,7 +628,7 @@ func (s *Server) handleEventsStats(w http.ResponseWriter, r *http.Request) {
 
 	eventsLoader := s.loader.EventsLoader()
 	stats := map[string]any{
-		"mode":        mode,
+		"mode":         mode,
 		"fully_loaded": eventsLoader.IsLoaded(mode),
 		"event_count":  eventsLoader.GetEventCount(mode),
 	}
@@ -743,13 +746,13 @@ func (s *Server) handleGetEvent(w http.ResponseWriter, r *http.Request) {
 	if err != nil || config.Events == "" {
 		// No events file configured, return outcome stats only
 		common.WriteSuccess(w, map[string]any{
-			"sim_id":        outcome.SimID,
-			"weight":        outcome.Weight,
-			"payout":        outcome.Payout,
-			"probability":   outcome.Probability,
-			"odds":          outcome.Odds,
-			"event":         nil,
-			"events_loaded": false,
+			"sim_id":         outcome.SimID,
+			"weight":         outcome.Weight,
+			"payout":         outcome.Payout,
+			"probability":    outcome.Probability,
+			"odds":           outcome.Odds,
+			"event":          nil,
+			"events_loaded":  false,
 			"no_events_file": true,
 		})
 		return
@@ -947,10 +950,10 @@ func (s *Server) handleLoaderStatus(w http.ResponseWriter, r *http.Request) {
 		"modes":      status,
 		"ws_clients": s.wsHub.ClientCount(),
 		"memory_estimate": map[string]any{
-			"compressed_bytes":   totalCompressedBytes,
-			"estimated_bytes":    estimatedMemoryBytes,
-			"estimated_mb":       estimatedMemoryBytes / (1024 * 1024),
-			"mode_count":         modeCount,
+			"compressed_bytes":    totalCompressedBytes,
+			"estimated_bytes":     estimatedMemoryBytes,
+			"estimated_mb":        estimatedMemoryBytes / (1024 * 1024),
+			"mode_count":          modeCount,
 			"decompression_ratio": decompressionRatio,
 		},
 	})

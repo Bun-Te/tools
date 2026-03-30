@@ -8,6 +8,7 @@
 		TopPayouts,
 		DistributionTable,
 		ModeComparison,
+		OverviewBooksLogPanel,
 		EventModal,
 		CrowdSimPanel,
 		LGSPanel,
@@ -21,10 +22,10 @@
 
 	// Certificate check state
 	let welcomeModal: WelcomeModal;
-	let certCheckInterval: ReturnType<typeof setInterval> | null = null;
+	let certCheckInterval: any = null;
 	const CERT_CHECK_INTERVAL = 30000; // Check every 30 seconds
 
-	let connectionRetryInterval: ReturnType<typeof setInterval> | null = null;
+	let connectionRetryInterval: any = null;
 	const CONNECTION_RETRY_INTERVAL_MS = 15000;
 	let connectAttemptInFlight = $state(false);
 	let backgroundReconnecting = $state(false);
@@ -609,6 +610,8 @@
 								<div class="glass-panel rounded-2xl p-6">
 									<ModeComparison items={compareItems} />
 								</div>
+
+								<OverviewBooksLogPanel modes={indexInfo.modes} />
 							</div>
 						{:else if activePanel === 'distribution'}
 							<div class="glass-panel rounded-2xl p-6">
