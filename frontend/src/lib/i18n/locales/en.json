@@ -218,6 +218,14 @@
 		"passedCount": "{count} passed",
 		"failedCount": "{count} failed",
 		"warnCount": "{count} warn",
+		"starTierLabel": "Bet-Level Tier",
+		"starTierIneligible": "Ineligible",
+		"starTierStar": "{tier}-Star",
+		"starTierHint": "Assigned from max payout & base-game std-dev per the Stake Engine rubric",
+		"tierMaxExposure": "Max exposure",
+		"tierMaxBet": "Max single bet",
+		"tierMaxMultiplier": "Max payout multiplier",
+		"tierStdDevRange": "Base std-dev range",
 		"checks": {
 			"rtpRange": {
 				"name": "RTP Range",
@@ -267,6 +275,48 @@
 				"name": "Volatility",
 				"description": "Standard deviation should be within industry norms for reasonable gameplay",
 				"reason": "Very high volatility may result in extreme variance in player outcomes"
+			},
+			"starTier": {
+				"name": "Star Tier Eligibility",
+				"description": "Bet-level tier assigned by Stake Engine based on max payout and base-game std-dev",
+				"reasonIneligible": "Mode exceeds 3-Star ceilings; operator may refuse bet-level assignment"
+			},
+			"maxPayoutMultiplier": {
+				"name": "Max Payout Multiplier",
+				"description": "Advertised max win must not exceed the top-tier rubric ceiling (100,000x)",
+				"reason": "Max payout exceeds the rubric top-tier ceiling"
+			},
+			"baseStdDev": {
+				"name": "Base Game Std-Dev Range",
+				"description": "Base-mode spin standard deviation must fall within the rubric bounds",
+				"descriptionSkipped": "Skipped for bonus mode (rubric targets base-game variance)",
+				"reasonLow": "Std-dev is below rubric minimum — game may be too flat to be eligible",
+				"reasonHigh": "Std-dev exceeds rubric maximum — volatility too extreme for operator risk"
+			},
+			"cvar": {
+				"name": "CVaR @ 0.1%",
+				"description": "Average payout across the worst 0.1% operator tail must stay bounded",
+				"reason": "Tail-average exceeds the rubric ceiling — operator exposure is too extreme"
+			},
+			"etl": {
+				"name": "Estimated Tail Liability",
+				"description": "RTP contribution from payouts ≥ 40x (and ≥ 10,000x) must stay bounded",
+				"reason": "Large payouts contribute too much expected liability per bet"
+			},
+			"probWin5K": {
+				"name": "Probability of Wins ≥ 5,000x",
+				"description": "Frequency of ≥5,000x wins must be under the rubric ceiling",
+				"reason": "5,000x+ wins occur too frequently — review volatility and max-win rarity"
+			},
+			"probWin10K": {
+				"name": "Probability of Wins ≥ 10,000x",
+				"description": "Frequency of ≥10,000x wins must be under the rubric ceiling",
+				"reason": "10,000x+ wins occur too frequently — review volatility and max-win rarity"
+			},
+			"minOutcomeCount": {
+				"name": "Outcome Count",
+				"description": "LUT must contain more than 100,000 total outcomes for statistical credibility",
+				"reason": "Not enough outcomes — results are statistically unreliable for the rubric"
 			}
 		}
 	},

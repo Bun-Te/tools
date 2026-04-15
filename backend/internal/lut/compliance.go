@@ -19,6 +19,58 @@ const (
 	CheckUniquePayouts  ComplianceCheckID = "unique_payouts"
 	CheckZeroPayoutRate ComplianceCheckID = "zero_payout_rate"
 	CheckVolatility        ComplianceCheckID = "volatility"
+	// Stake Engine star-tier rubric
+	CheckStarTier            ComplianceCheckID = "star_tier"
+	CheckMaxPayoutMultiplier ComplianceCheckID = "max_payout_multiplier"
+	CheckBaseStdDev          ComplianceCheckID = "base_std_dev"
+	CheckCVaR                ComplianceCheckID = "cvar_001"
+	CheckETL                 ComplianceCheckID = "etl_40x"
+	CheckProbWin5K           ComplianceCheckID = "prob_win_5k"
+	CheckProbWin10K          ComplianceCheckID = "prob_win_10k"
+	CheckMinOutcomeCount     ComplianceCheckID = "min_outcome_count"
+)
+
+// MinOutcomeCount is the minimum number of outcomes (rows) a LUT must contain
+// to be considered statistically credible for the Stake Engine rubric.
+const MinOutcomeCount = 100_000
+
+// StarTier is the Stake Engine bet-level eligibility tier assigned to a mode.
+// Tiers map to operator-side risk controls (exposure and bet-wager caps).
+type StarTier int
+
+const (
+	StarTierIneligible StarTier = 0
+	StarTier1          StarTier = 1
+	StarTier2          StarTier = 2
+	StarTier3          StarTier = 3
+)
+
+// TierLimits are the Stake Engine rubric ceilings for each star tier.
+// Values may be tweaked by operator ops pending audit of active games.
+type TierLimits struct {
+	Tier                StarTier `json:"tier"`
+	MaxExposureUSD      float64  `json:"max_exposure_usd"`
+	MaxSingleBetUSD     float64  `json:"max_single_bet_usd"`
+	MaxPayoutMultiplier float64  `json:"max_payout_multiplier"`
+	StdDevMin           float64  `json:"std_dev_min"`
+	StdDevMax           float64  `json:"std_dev_max"`
+}
+
+// StarTierTable lists the rubric ceilings in ascending-tier order.
+var StarTierTable = []TierLimits{
+	{Tier: StarTier1, MaxExposureUSD: 100_000, MaxSingleBetUSD: 15_000, MaxPayoutMultiplier: 15_000, StdDevMin: 1, StdDevMax: 35},
+	{Tier: StarTier2, MaxExposureUSD: 5_000_000, MaxSingleBetUSD: 50_000, MaxPayoutMultiplier: 25_000, StdDevMin: 1, StdDevMax: 40},
+	{Tier: StarTier3, MaxExposureUSD: 10_000_000, MaxSingleBetUSD: 500_000, MaxPayoutMultiplier: 100_000, StdDevMin: 1, StdDevMax: 50},
+}
+
+// Global safety-test limits for the pass/fail rubric rows. These are tentative
+// defaults; the operator calibrates them against the empirical distribution of
+// all currently published game modes.
+const (
+	CVaRMaxMultiplier = 50_000.0 // worst 0.1% tail must average <= 50,000x
+	ETL40xMaxPerBet   = 2.0      // RTP contribution (per bet) from payouts >= 40x
+	ProbWin5KMax      = 0.005    // P(>=5,000x) must be <= 0.5%
+	ProbWin10KMax     = 0.001    // P(>=10,000x) must be <= 0.1%
 )
 
 // ComplianceCheck represents a single compliance check result.
@@ -43,6 +95,9 @@ type ComplianceResult struct {
 	WarningCount int                `json:"warning_count"`
 	Checks       []ComplianceCheck  `json:"checks"`
 	Summary      ComplianceSummary  `json:"summary"`
+	// Stake Engine bet-level eligibility tier assigned by the rubric.
+	StarTier     StarTier           `json:"star_tier"`
+	TierLimits   *TierLimits        `json:"tier_limits,omitempty"`
 }
 
 // ComplianceSummary contains summary statistics used for compliance checks.
@@ -55,6 +110,13 @@ type ComplianceSummary struct {
 	UniquePayouts     int     `json:"unique_payouts"`
 	ZeroPayoutRate float64 `json:"zero_payout_rate"`
 	Volatility     float64 `json:"volatility"`
+	// Tail-risk metrics (Stake Engine rubric)
+	StdDev     float64 `json:"std_dev"`
+	CVaR001    float64 `json:"cvar_001"`
+	ETL40x     float64 `json:"etl_40x"`
+	ETL10kx    float64 `json:"etl_10kx"`
+	ProbWin5K  float64 `json:"prob_win_5k"`
+	ProbWin10K float64 `json:"prob_win_10k"`
 }
 
 // AllModesComplianceResult contains compliance results for all modes.
@@ -85,12 +147,18 @@ func (c *ComplianceChecker) CheckMode(lut *stakergs.LookupTable) *ComplianceResu
 		Mode:   lut.Mode,
 		Checks: make([]ComplianceCheck, 0),
 		Summary: ComplianceSummary{
-			RTP:           stats.RTP,
-			HitRate:       stats.HitRate,
-			MaxPayout:     stats.MaxPayout,
-			TotalOutcomes: stats.TotalOutcomes,
+			RTP:            stats.RTP,
+			HitRate:        stats.HitRate,
+			MaxPayout:      stats.MaxPayout,
+			TotalOutcomes:  stats.TotalOutcomes,
 			ZeroPayoutRate: stats.ZeroPayoutRate,
-			Volatility:    stats.Volatility,
+			Volatility:     stats.Volatility,
+			StdDev:         stats.StdDev,
+			CVaR001:        stats.CVaR001,
+			ETL40x:         stats.ETL40x,
+			ETL10kx:        stats.ETL10kx,
+			ProbWin5K:      stats.ProbWin5K,
+			ProbWin10K:     stats.ProbWin10K,
 		},
 	}
 
@@ -106,6 +174,24 @@ func (c *ComplianceChecker) CheckMode(lut *stakergs.LookupTable) *ComplianceResu
 	result.Checks = append(result.Checks, c.checkUniquePayouts(lut))
 	result.Checks = append(result.Checks, c.checkZeroPayoutRate(stats))
 	result.Checks = append(result.Checks, c.checkVolatility(stats))
+
+	// Stake Engine star-tier rubric. Tier is derived from the max-payout
+	// multiplier and base-game std-dev range; we then apply safety-test rows
+	// against the rubric-wide CVaR/ETL/probability limits.
+	tier, tierLimits := c.classifyStarTier(stats)
+	result.StarTier = tier
+	if tierLimits != nil {
+		limitsCopy := *tierLimits
+		result.TierLimits = &limitsCopy
+	}
+	result.Checks = append(result.Checks, c.checkStarTier(tier, tierLimits, stats))
+	result.Checks = append(result.Checks, c.checkMaxPayoutMultiplier(stats, tierLimits))
+	result.Checks = append(result.Checks, c.checkBaseStdDev(lut, stats, tierLimits))
+	result.Checks = append(result.Checks, c.checkCVaR(stats))
+	result.Checks = append(result.Checks, c.checkETL(stats))
+	result.Checks = append(result.Checks, c.checkProbWin5K(stats))
+	result.Checks = append(result.Checks, c.checkProbWin10K(stats))
+	result.Checks = append(result.Checks, c.checkMinOutcomeCount(stats))
 
 	// Calculate totals
 	for _, check := range result.Checks {
@@ -557,6 +643,274 @@ func (c *ComplianceChecker) checkVolatility(stats *Statistics) ComplianceCheck {
 	}
 
 	return check
+}
+
+// Stake Engine star-tier checks
+// -----------------------------------------------------------------------------
+
+// classifyStarTier assigns a bet-level eligibility tier to the mode by picking
+// the lowest tier whose max-payout-multiplier AND std-dev ceilings both
+// accommodate the mode's actual stats. Modes that exceed even the top tier are
+// classified as ineligible. Std-dev is skipped for bonus modes (cost > 2), as
+// the rubric rows target base-game spin variance.
+func (c *ComplianceChecker) classifyStarTier(stats *Statistics) (StarTier, *TierLimits) {
+	isBaseMode := stats.Cost <= 2
+
+	for i := range StarTierTable {
+		limits := &StarTierTable[i]
+		if stats.MaxPayout > limits.MaxPayoutMultiplier {
+			continue
+		}
+		if isBaseMode {
+			if stats.StdDev < limits.StdDevMin || stats.StdDev > limits.StdDevMax {
+				continue
+			}
+		}
+		return limits.Tier, limits
+	}
+	return StarTierIneligible, nil
+}
+
+func (c *ComplianceChecker) checkStarTier(tier StarTier, limits *TierLimits, stats *Statistics) ComplianceCheck {
+	check := ComplianceCheck{
+		ID:             CheckStarTier,
+		NameKey:        "compliance.checks.starTier.name",
+		DescriptionKey: "compliance.checks.starTier.description",
+		Severity:       "info",
+		Details: map[string]any{
+			"tier":           int(tier),
+			"max_payout":     stats.MaxPayout,
+			"std_dev":        stats.StdDev,
+			"cost":           stats.Cost,
+			"rubric":         StarTierTable,
+			"applied_limits": limits,
+		},
+	}
+
+	if tier == StarTierIneligible {
+		check.Passed = false
+		check.Severity = "error"
+		check.Expected = "1-Star, 2-Star or 3-Star"
+		check.Value = "Ineligible"
+		check.ReasonKey = "compliance.checks.starTier.reasonIneligible"
+		return check
+	}
+
+	check.Passed = true
+	check.Expected = "1-Star, 2-Star or 3-Star"
+	check.Value = fmt.Sprintf("%d-Star", int(tier))
+	return check
+}
+
+func (c *ComplianceChecker) checkMaxPayoutMultiplier(stats *Statistics, limits *TierLimits) ComplianceCheck {
+	// Rubric ceiling: even the top tier caps max payout at 100,000x.
+	maxAllowed := StarTierTable[len(StarTierTable)-1].MaxPayoutMultiplier
+
+	check := ComplianceCheck{
+		ID:             CheckMaxPayoutMultiplier,
+		NameKey:        "compliance.checks.maxPayoutMultiplier.name",
+		DescriptionKey: "compliance.checks.maxPayoutMultiplier.description",
+		Expected:       fmt.Sprintf("≤ %sx (rubric top tier)", formatLargeNumber(maxAllowed)),
+		Value:          fmt.Sprintf("%sx", formatLargeNumber(stats.MaxPayout)),
+		Severity:       "error",
+		Details: map[string]any{
+			"max_payout":        stats.MaxPayout,
+			"rubric_top":        maxAllowed,
+			"assigned_tier":     tierValue(limits),
+			"assigned_ceiling":  tierCeiling(limits),
+		},
+	}
+
+	if stats.MaxPayout <= maxAllowed {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.ReasonKey = "compliance.checks.maxPayoutMultiplier.reason"
+	}
+	return check
+}
+
+func (c *ComplianceChecker) checkBaseStdDev(lut *stakergs.LookupTable, stats *Statistics, limits *TierLimits) ComplianceCheck {
+	// Std-dev range only applies to base modes; bonus modes naturally have
+	// much higher spin variance.
+	cost := lut.Cost
+	if cost <= 0 {
+		cost = 1.0
+	}
+
+	check := ComplianceCheck{
+		ID:             CheckBaseStdDev,
+		NameKey:        "compliance.checks.baseStdDev.name",
+		DescriptionKey: "compliance.checks.baseStdDev.description",
+		Severity:       "warning",
+		Details: map[string]any{
+			"std_dev": stats.StdDev,
+			"cost":    cost,
+		},
+	}
+
+	if cost > 2 {
+		check.Passed = true
+		check.Severity = "info"
+		check.DescriptionKey = "compliance.checks.baseStdDev.descriptionSkipped"
+		check.Expected = "N/A (bonus mode)"
+		check.Value = fmt.Sprintf("%.2f", stats.StdDev)
+		return check
+	}
+
+	rubricMax := StarTierTable[len(StarTierTable)-1].StdDevMax
+	rubricMin := StarTierTable[0].StdDevMin
+	check.Expected = fmt.Sprintf("%.0f - %.0f (rubric bounds)", rubricMin, rubricMax)
+	check.Value = fmt.Sprintf("%.2f", stats.StdDev)
+
+	if stats.StdDev >= rubricMin && stats.StdDev <= rubricMax {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.Severity = "error"
+		if stats.StdDev < rubricMin {
+			check.ReasonKey = "compliance.checks.baseStdDev.reasonLow"
+		} else {
+			check.ReasonKey = "compliance.checks.baseStdDev.reasonHigh"
+		}
+	}
+
+	if limits != nil {
+		check.Details.(map[string]any)["tier_min"] = limits.StdDevMin
+		check.Details.(map[string]any)["tier_max"] = limits.StdDevMax
+	}
+	return check
+}
+
+func (c *ComplianceChecker) checkCVaR(stats *Statistics) ComplianceCheck {
+	check := ComplianceCheck{
+		ID:             CheckCVaR,
+		NameKey:        "compliance.checks.cvar.name",
+		DescriptionKey: "compliance.checks.cvar.description",
+		Expected:       fmt.Sprintf("≤ %sx", formatLargeNumber(CVaRMaxMultiplier)),
+		Value:          fmt.Sprintf("%sx", formatLargeNumber(stats.CVaR001)),
+		Severity:       "error",
+		Details: map[string]any{
+			"cvar_001":   stats.CVaR001,
+			"max_allowed": CVaRMaxMultiplier,
+			"alpha":      0.001,
+		},
+	}
+
+	if stats.CVaR001 <= CVaRMaxMultiplier {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.ReasonKey = "compliance.checks.cvar.reason"
+	}
+	return check
+}
+
+func (c *ComplianceChecker) checkETL(stats *Statistics) ComplianceCheck {
+	check := ComplianceCheck{
+		ID:             CheckETL,
+		NameKey:        "compliance.checks.etl.name",
+		DescriptionKey: "compliance.checks.etl.description",
+		Expected:       fmt.Sprintf("≤ %.2f (RTP contrib from ≥40x or ≥10,000x)", ETL40xMaxPerBet),
+		Value:          fmt.Sprintf("%.4f (40x+) / %.4f (10kx+)", stats.ETL40x, stats.ETL10kx),
+		Severity:       "error",
+		Details: map[string]any{
+			"etl_40x":     stats.ETL40x,
+			"etl_10kx":    stats.ETL10kx,
+			"max_allowed": ETL40xMaxPerBet,
+		},
+	}
+
+	if stats.ETL40x <= ETL40xMaxPerBet {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.ReasonKey = "compliance.checks.etl.reason"
+	}
+	return check
+}
+
+func (c *ComplianceChecker) checkProbWin5K(stats *Statistics) ComplianceCheck {
+	check := ComplianceCheck{
+		ID:             CheckProbWin5K,
+		NameKey:        "compliance.checks.probWin5K.name",
+		DescriptionKey: "compliance.checks.probWin5K.description",
+		Expected:       fmt.Sprintf("≤ %.3f%%", ProbWin5KMax*100),
+		Value:          fmt.Sprintf("%.4f%%", stats.ProbWin5K*100),
+		Severity:       "warning",
+		Details: map[string]any{
+			"prob_win_5k": stats.ProbWin5K,
+			"max_allowed": ProbWin5KMax,
+		},
+	}
+
+	if stats.ProbWin5K <= ProbWin5KMax {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.ReasonKey = "compliance.checks.probWin5K.reason"
+	}
+	return check
+}
+
+func (c *ComplianceChecker) checkProbWin10K(stats *Statistics) ComplianceCheck {
+	check := ComplianceCheck{
+		ID:             CheckProbWin10K,
+		NameKey:        "compliance.checks.probWin10K.name",
+		DescriptionKey: "compliance.checks.probWin10K.description",
+		Expected:       fmt.Sprintf("≤ %.3f%%", ProbWin10KMax*100),
+		Value:          fmt.Sprintf("%.4f%%", stats.ProbWin10K*100),
+		Severity:       "warning",
+		Details: map[string]any{
+			"prob_win_10k": stats.ProbWin10K,
+			"max_allowed":  ProbWin10KMax,
+		},
+	}
+
+	if stats.ProbWin10K <= ProbWin10KMax {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.ReasonKey = "compliance.checks.probWin10K.reason"
+	}
+	return check
+}
+
+func (c *ComplianceChecker) checkMinOutcomeCount(stats *Statistics) ComplianceCheck {
+	check := ComplianceCheck{
+		ID:             CheckMinOutcomeCount,
+		NameKey:        "compliance.checks.minOutcomeCount.name",
+		DescriptionKey: "compliance.checks.minOutcomeCount.description",
+		Expected:       fmt.Sprintf("> %s outcomes", formatLargeNumber(float64(MinOutcomeCount))),
+		Value:          fmt.Sprintf("%s outcomes", formatLargeNumber(float64(stats.TotalOutcomes))),
+		Severity:       "error",
+		Details: map[string]any{
+			"total_outcomes": stats.TotalOutcomes,
+			"min_required":   MinOutcomeCount,
+		},
+	}
+
+	if stats.TotalOutcomes > MinOutcomeCount {
+		check.Passed = true
+	} else {
+		check.Passed = false
+		check.ReasonKey = "compliance.checks.minOutcomeCount.reason"
+	}
+	return check
+}
+
+func tierValue(limits *TierLimits) int {
+	if limits == nil {
+		return 0
+	}
+	return int(limits.Tier)
+}
+
+func tierCeiling(limits *TierLimits) float64 {
+	if limits == nil {
+		return 0
+	}
+	return limits.MaxPayoutMultiplier
 }
 
 // Helper functions

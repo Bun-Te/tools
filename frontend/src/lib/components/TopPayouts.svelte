@@ -28,6 +28,27 @@
 	}
 
 	let modeResult = $derived(mode && data?.mode_results?.[mode] ? data.mode_results[mode] : null);
+	let starTier = $derived(modeResult?.star_tier ?? 0);
+	let tierLimits = $derived(modeResult?.tier_limits ?? null);
+
+	function tierToneClass(tier: number): string {
+		if (tier === 3) return 'text-emerald-400';
+		if (tier === 2) return 'text-[var(--color-gold)]';
+		if (tier === 1) return 'text-amber-400/85';
+		return 'text-[var(--color-coral)]';
+	}
+
+	function formatUSD(n: number): string {
+		if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+		if (n >= 1_000) return `$${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}K`;
+		return `$${n.toFixed(0)}`;
+	}
+
+	function formatMultiplier(n: number): string {
+		if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}Mx`;
+		if (n >= 1_000) return `${(n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1)}Kx`;
+		return `${n}x`;
+	}
 </script>
 
 <div class="h-full flex flex-col min-h-0">
@@ -54,7 +75,7 @@
 	{:else if !modeResult}
 		<div class="py-8 text-center text-slate-500 text-sm">{$_('status.noData')}</div>
 	{:else}
-		<div class="flex-1 min-h-0 overflow-y-auto overscroll-contain pr-2 pb-2 -mr-1">
+		<div class="flex-1 min-h-0 max-h-[70vh] overflow-y-auto overscroll-contain pr-2 pb-2 -mr-1">
 			<section aria-label={mode}>
 				<div class="flex items-baseline justify-between gap-2 mb-4">
 					<span class="text-xs font-mono uppercase tracking-widest text-slate-400 capitalize truncate min-w-0">
@@ -69,6 +90,44 @@
 							? `${modeResult.passed_count}/${modeResult.checks.length}`
 							: `−${modeResult.failed_count}`}
 					</span>
+				</div>
+
+				<div class="mb-4 rounded-xl border border-slate-700/35 bg-slate-900/25 p-3.5">
+					<div class="flex items-baseline justify-between gap-3 mb-2">
+						<span class="text-[11px] font-mono uppercase tracking-widest text-slate-500">
+							{$_('compliance.starTierLabel')}
+						</span>
+						<span class="text-sm font-display tracking-wide {tierToneClass(starTier)}">
+							{#if starTier === 0}
+								{$_('compliance.starTierIneligible')}
+							{:else}
+								{$_('compliance.starTierStar', { values: { tier: starTier } })}
+							{/if}
+						</span>
+					</div>
+					<p class="text-[11px] leading-relaxed text-slate-500">
+						{$_('compliance.starTierHint')}
+					</p>
+					{#if tierLimits}
+						<dl class="mt-3 grid grid-cols-2 gap-x-4 gap-y-1.5 text-[11px] font-mono text-slate-500">
+							<div class="flex justify-between col-span-2 sm:col-span-1">
+								<dt>{$_('compliance.tierMaxExposure')}</dt>
+								<dd class="text-slate-400">{formatUSD(tierLimits.max_exposure_usd)}</dd>
+							</div>
+							<div class="flex justify-between col-span-2 sm:col-span-1">
+								<dt>{$_('compliance.tierMaxBet')}</dt>
+								<dd class="text-slate-400">{formatUSD(tierLimits.max_single_bet_usd)}</dd>
+							</div>
+							<div class="flex justify-between col-span-2 sm:col-span-1">
+								<dt>{$_('compliance.tierMaxMultiplier')}</dt>
+								<dd class="text-slate-400">{formatMultiplier(tierLimits.max_payout_multiplier)}</dd>
+							</div>
+							<div class="flex justify-between col-span-2 sm:col-span-1">
+								<dt>{$_('compliance.tierStdDevRange')}</dt>
+								<dd class="text-slate-400">{tierLimits.std_dev_min}–{tierLimits.std_dev_max}</dd>
+							</div>
+						</dl>
+					{/if}
 				</div>
 
 				<ul class="grid gap-3 xl:grid-cols-2">

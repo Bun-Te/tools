@@ -329,10 +329,20 @@ func (a *App) GetStatus() Status {
 	a.mu.Lock()
 	defer a.mu.Unlock()
 
+	// Surface the library path only if it exists on disk. A stale path from
+	// another machine must NOT enable Start All — force the UI into the
+	// "choose folder" state instead.
+	libraryPath := a.config.LibraryPath
+	if libraryPath != "" {
+		if _, err := os.Stat(libraryPath); err != nil {
+			libraryPath = ""
+		}
+	}
+
 	status := Status{
 		Backend:      StatusStopped,
 		Frontend:     StatusStopped,
-		LibraryPath:  a.config.LibraryPath,
+		LibraryPath:  libraryPath,
 		FrontendPort: a.config.FrontendPort,
 		BackendPort:  DefaultBackendPort,
 		IsProduction: isProduction,
@@ -412,8 +422,13 @@ func (a *App) SelectLibraryFolder() (string, error) {
 	// Get current home directory as default
 	homeDir, _ := os.UserHomeDir()
 	defaultDir := homeDir
+	// Only use the configured library path as the dialog's starting directory
+	// if it actually exists on disk. A stale path from a previous/other machine
+	// would otherwise break the native picker (refuses to open or change dir).
 	if a.config.LibraryPath != "" {
-		defaultDir = a.config.LibraryPath
+		if _, err := os.Stat(a.config.LibraryPath); err == nil {
+			defaultDir = a.config.LibraryPath
+		}
 	}
 
 	// Bring window to front to ensure dialog appears on top

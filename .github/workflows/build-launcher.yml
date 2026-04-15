@@ -265,6 +265,15 @@ jobs:
           $env:PATH = "$env:USERPROFILE\go\bin;$env:PATH"
           wails build -platform ${{ matrix.platform }} -ldflags="-s -w -X main.appVersion=$env:APP_VERSION" -tags prod
 
+      # Ad-hoc codesign (macOS)
+      - name: Sign macOS app
+        if: runner.os == 'macOS'
+        working-directory: launcher
+        run: |
+          BUNDLE=$(find build/bin -name "*.app" -maxdepth 1 | head -1)
+          echo "==> Signing ${BUNDLE}..."
+          codesign --force --deep --sign - "$BUNDLE" 2>/dev/null || true
+
       # Package artifacts
       - name: Package macOS app
         if: runner.os == 'macOS'

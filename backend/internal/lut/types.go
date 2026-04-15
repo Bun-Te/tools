@@ -15,6 +15,10 @@ func round2(v float64) float64 {
 }
 
 // round4 rounds to 4 decimal places (for rates/ratios)
+func round6(v float64) float64 {
+	return math.Round(v*1_000_000) / 1_000_000
+}
+
 func round4(v float64) float64 {
 	return math.Round(v*10000) / 10000
 }
@@ -42,6 +46,12 @@ type Statistics struct {
 	// Cost-adjusted metrics (for bonus modes with cost > 1)
 	BreakevenRate    float64 `json:"breakeven_rate"`    // P(payout >= cost)
 	CostAdjVolatility float64 `json:"cost_adj_volatility"` // StdDev / Cost
+	// Tail-risk metrics for Stake Engine star-tier rubric
+	CVaR001    float64 `json:"cvar_001"`     // CVaR@0.1%: mean multiplier in worst 0.1% operator tail
+	ETL40x     float64 `json:"etl_40x"`      // Expected tail liability: RTP contribution from payouts >= 40x
+	ETL10kx    float64 `json:"etl_10kx"`     // Expected tail liability: RTP contribution from payouts >= 10,000x
+	ProbWin5K  float64 `json:"prob_win_5k"`  // P(payout >= 5,000x)
+	ProbWin10K float64 `json:"prob_win_10k"` // P(payout >= 10,000x)
 }
 
 // PayoutBucket represents a range of payouts for histogram visualization.
@@ -192,6 +202,9 @@ func (a *Analyzer) Analyze(lut *stakergs.LookupTable) *Statistics {
 	// This shows how much variance there is compared to what you paid
 	stats.CostAdjVolatility = round4(math.Sqrt(variance) / cost)
 
+	// Tail-risk metrics (Stake Engine star-tier rubric)
+	a.fillTailMetrics(stats, lut, totalWeight)
+
 	// Distribution (sorted by payout)
 	stats.Distribution = a.BuildDistribution(lut, totalWeight)
 
@@ -202,6 +215,80 @@ func (a *Analyzer) Analyze(lut *stakergs.LookupTable) *Statistics {
 	stats.TopPayouts = a.getTopPayouts(lut, totalWeight, 10)
 
 	return stats
+}
+
+// fillTailMetrics computes CVaR@0.1%, ETL at 40x and 10,000x thresholds, and
+// the probability of landing payouts >= 5,000x / >= 10,000x. These are used by
+// the Stake Engine star-tier compliance rubric.
+func (a *Analyzer) fillTailMetrics(stats *Statistics, lut *stakergs.LookupTable, totalWeight uint64) {
+	if totalWeight == 0 || len(lut.Outcomes) == 0 {
+		return
+	}
+
+	const (
+		cvarAlpha    = 0.001       // 0.1%
+		thresh40x    uint = 40 * 100
+		thresh5kx    uint = 5_000 * 100
+		thresh10kx   uint = 10_000 * 100
+	)
+
+	// CVaR@0.1%: mean payout in the worst 0.1% of operator outcomes
+	// (i.e. the top 0.1% of player payouts).
+	sorted := make([]stakergs.Outcome, len(lut.Outcomes))
+	copy(sorted, lut.Outcomes)
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].Payout > sorted[j].Payout
+	})
+	targetWeight := float64(totalWeight) * cvarAlpha
+	var tailWeight uint64
+	var tailPayoutSum float64
+	for _, o := range sorted {
+		payout := float64(o.Payout) / 100.0
+		w := o.Weight
+		remaining := targetWeight - float64(tailWeight)
+		if remaining <= 0 {
+			break
+		}
+		if float64(w) > remaining {
+			// Partial inclusion for the last bucket to hit exactly 0.1% mass.
+			tailPayoutSum += payout * remaining
+			tailWeight += uint64(remaining)
+			break
+		}
+		tailPayoutSum += payout * float64(w)
+		tailWeight += w
+	}
+	if tailWeight > 0 {
+		stats.CVaR001 = round2(tailPayoutSum / float64(tailWeight))
+	}
+
+	// Expected tail liability (RTP contribution above each threshold) and
+	// probability of large wins.
+	var etl40Sum, etl10kSum float64
+	var p5kWeight, p10kWeight uint64
+	for _, o := range lut.Outcomes {
+		payout := float64(o.Payout) / 100.0
+		w := float64(o.Weight)
+		if o.Payout >= thresh40x {
+			etl40Sum += payout * w
+		}
+		if o.Payout >= thresh5kx {
+			p5kWeight += o.Weight
+		}
+		if o.Payout >= thresh10kx {
+			etl10kSum += payout * w
+			p10kWeight += o.Weight
+		}
+	}
+	tw := float64(totalWeight)
+	cost := stats.Cost
+	if cost <= 0 {
+		cost = 1.0
+	}
+	stats.ETL40x = round4(etl40Sum / tw / cost)
+	stats.ETL10kx = round4(etl10kSum / tw / cost)
+	stats.ProbWin5K = round6(float64(p5kWeight) / tw)
+	stats.ProbWin10K = round6(float64(p10kWeight) / tw)
 }
 
 func (a *Analyzer) calculateWeightedMedian(lut *stakergs.LookupTable, totalWeight uint64) float64 {

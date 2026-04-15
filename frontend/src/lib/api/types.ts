@@ -343,9 +343,30 @@ export type ComplianceCheckID =
 	| 'payout_gaps'
 	| 'unique_payouts'
 	| 'zero_payout_rate'
-	| 'volatility';
+	| 'volatility'
+	| 'star_tier'
+	| 'max_payout_multiplier'
+	| 'base_std_dev'
+	| 'cvar_001'
+	| 'etl_40x'
+	| 'prob_win_5k'
+	| 'prob_win_10k'
+	| 'min_outcome_count';
 
 export type ComplianceSeverity = 'error' | 'warning' | 'info';
+
+/** Stake Engine bet-level eligibility tier. 0 = ineligible, 1/2/3 = star tier. */
+export type StarTier = 0 | 1 | 2 | 3;
+
+/** Ceilings applied to a star tier under the Stake Engine rubric. */
+export interface TierLimits {
+	tier: StarTier;
+	max_exposure_usd: number;
+	max_single_bet_usd: number;
+	max_payout_multiplier: number;
+	std_dev_min: number;
+	std_dev_max: number;
+}
 
 export interface ComplianceCheck {
 	id: ComplianceCheckID;
@@ -368,6 +389,12 @@ export interface ComplianceSummary {
 	unique_payouts: number;
 	zero_payout_rate: number;
 	volatility: number;
+	std_dev: number;
+	cvar_001: number;
+	etl_40x: number;
+	etl_10kx: number;
+	prob_win_5k: number;
+	prob_win_10k: number;
 }
 
 export interface ComplianceResult {
@@ -378,6 +405,8 @@ export interface ComplianceResult {
 	warning_count: number;
 	checks: ComplianceCheck[];
 	summary: ComplianceSummary;
+	star_tier: StarTier;
+	tier_limits?: TierLimits | null;
 }
 
 export interface AllModesComplianceResult {

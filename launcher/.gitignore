@@ -1,6 +1,9 @@
 # Build output
 build/
 
+# Per-user runtime config (never commit — contains absolute paths / user preferences)
+config.json
+
 # Bundled assets (created by CI/CD for production builds)
 bundled/
 
