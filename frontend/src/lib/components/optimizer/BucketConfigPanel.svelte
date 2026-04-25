@@ -136,6 +136,14 @@
 	type OptimizerState = 'idle' | 'running' | 'complete' | 'error';
 	let optimizerState = $state<OptimizerState>('idle');
 
+	// Handle custom RTP input (accepts percent, e.g. 96.5 → targetRtp = 0.965)
+	function onCustomRtpInput(e: Event) {
+		const raw = (e.target as HTMLInputElement).value;
+		const v = parseFloat(raw);
+		if (isNaN(v)) return;
+		targetRtp = Math.max(0.01, Math.min(maxOptimizerTargetRtp, v / 100));
+	}
+
 	// Format RTP for display with smart capping
 	function formatRTPDisplay(rtp: number): string {
 		const rtpPercent = rtp * 100;
@@ -774,7 +782,7 @@
 				type="range"
 				min="0.90"
 				max={maxOptimizerTargetRtp}
-				step="0.005"
+				step="0.0001"
 				bind:value={targetRtp}
 				class="flex-1 h-1.5 bg-[var(--color-slate)] rounded-full appearance-none cursor-pointer
 					   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -782,7 +790,19 @@
 					   [&::-webkit-slider-thumb]:cursor-pointer"
 				{disabled}
 			/>
-			<span class="font-mono text-lg text-[var(--color-emerald)] min-w-[4rem] text-right">{(targetRtp * 100).toFixed(1)}%</span>
+			<div class="flex items-center gap-1">
+				<input
+					type="number"
+					value={(targetRtp * 100).toFixed(2)}
+					oninput={onCustomRtpInput}
+					min="1"
+					max={maxOptimizerTargetRtp * 100}
+					step="0.01"
+					class="w-20 px-2 py-1 text-lg font-mono bg-[var(--color-emerald)]/10 border border-[var(--color-emerald)]/20 rounded text-[var(--color-emerald)] text-right focus:outline-none focus:border-[var(--color-emerald)]/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+					{disabled}
+				/>
+				<span class="font-mono text-lg text-[var(--color-emerald)]">%</span>
+			</div>
 		</div>
 
 		<!-- RTP Feasibility Warning -->
@@ -943,7 +963,7 @@
 				type="range"
 				min="0.90"
 				max={maxOptimizerTargetRtp}
-				step="0.005"
+				step="0.0001"
 				bind:value={targetRtp}
 				class="flex-1 h-1.5 bg-[var(--color-slate)] rounded-full appearance-none cursor-pointer
 					   [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:h-4
@@ -951,7 +971,19 @@
 					   [&::-webkit-slider-thumb]:cursor-pointer"
 				{disabled}
 			/>
-			<span class="font-mono text-lg text-[var(--color-emerald)] min-w-[4rem] text-right">{(targetRtp * 100).toFixed(1)}%</span>
+			<div class="flex items-center gap-1">
+				<input
+					type="number"
+					value={(targetRtp * 100).toFixed(2)}
+					oninput={onCustomRtpInput}
+					min="1"
+					max={maxOptimizerTargetRtp * 100}
+					step="0.01"
+					class="w-20 px-2 py-1 text-lg font-mono bg-[var(--color-emerald)]/10 border border-[var(--color-emerald)]/20 rounded text-[var(--color-emerald)] text-right focus:outline-none focus:border-[var(--color-emerald)]/50 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+					{disabled}
+				/>
+				<span class="font-mono text-lg text-[var(--color-emerald)]">%</span>
+			</div>
 
 			<!-- ABS/NORM Toggle (only for bonus modes) -->
 			{#if modeInfo?.is_bonus_mode}

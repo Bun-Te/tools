@@ -881,7 +881,7 @@ func (c *ComplianceChecker) checkMinOutcomeCount(stats *Statistics) ComplianceCh
 		ID:             CheckMinOutcomeCount,
 		NameKey:        "compliance.checks.minOutcomeCount.name",
 		DescriptionKey: "compliance.checks.minOutcomeCount.description",
-		Expected:       fmt.Sprintf("> %s outcomes", formatLargeNumber(float64(MinOutcomeCount))),
+		Expected:       fmt.Sprintf("≥ %s outcomes", formatLargeNumber(float64(MinOutcomeCount))),
 		Value:          fmt.Sprintf("%s outcomes", formatLargeNumber(float64(stats.TotalOutcomes))),
 		Severity:       "error",
 		Details: map[string]any{
@@ -890,7 +890,7 @@ func (c *ComplianceChecker) checkMinOutcomeCount(stats *Statistics) ComplianceCh
 		},
 	}
 
-	if stats.TotalOutcomes > MinOutcomeCount {
+	if stats.TotalOutcomes >= MinOutcomeCount {
 		check.Passed = true
 	} else {
 		check.Passed = false
