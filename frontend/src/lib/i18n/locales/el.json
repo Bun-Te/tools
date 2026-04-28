@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "το bucket '{name}' δεν έχει αντίστοιχα αποτελέσματα",
 		"iter": "επαν",
 		"err": "σφάλμα",
-		"maxWinFreq": "ΣΥΧΝ ΜΕΓ. ΚΕΡΔΟΥΣ",
 		"wsConnectionFailed": "Αποτυχία σύνδεσης WebSocket",
 		"legendHelp": "ΣΥΧΝ = 1 σε N περιστροφές | RTP = % του στόχου | AUTO = υπόλοιπο RTP (^exp) | ΜΕΓ = συχν μέγ κέρδους",
 		"presets": "ΠΡΟΡΥΘΜΙΣΕΙΣ",

@@ -71,7 +71,6 @@ type BucketOptimizerConfig struct {
 	MinWeight           uint64           `json:"min_weight"`                      // Minimum weight for any outcome (default 1)
 	MaxIterations       int              `json:"max_iterations,omitempty"`        // Max iterations for brute force (default: 1000)
 	OptimizationMode    OptimizationMode `json:"optimization_mode,omitempty"`     // "fast"/"balanced"/"precise" (default: balanced)
-	GlobalMaxWinFreq    float64          `json:"global_max_win_freq,omitempty"`   // Global max win outcome frequency (1 in N)
 	EnableBruteForce    bool             `json:"enable_brute_force,omitempty"`    // Enable iterative search (default: false)
 	EnableVoiding       bool             `json:"enable_voiding,omitempty"`        // Enable bucket voiding (default: false) - DEPRECATED, use EnableAutoVoiding
 	VoidedBucketIndices []int            `json:"voided_bucket_indices,omitempty"` // Indices of buckets to void - DEPRECATED
@@ -706,6 +705,21 @@ func (o *BucketOptimizer) calculateTargetProbabilities(assignments []bucketAssig
 				usedRTP += bucket.rtpContribution
 			}
 
+		case ConstraintMaxWinFreq:
+			// MaxWinFreq: only the absolute max payout in the bucket carries weight,
+			// at probability 1/freq. Account for its RTP so AUTO buckets don't over-allocate.
+			if bucket.config.MaxWinFrequency > 0 {
+				maxP := 0.0
+				for _, p := range bucket.payouts {
+					if p > maxP {
+						maxP = p
+					}
+				}
+				bucket.targetProb = 1.0 / bucket.config.MaxWinFrequency
+				bucket.rtpContribution = bucket.targetProb * maxP
+				usedRTP += bucket.rtpContribution
+			}
+
 		case ConstraintAuto:
 			bucket.isAuto = true
 			// Will be calculated in second pass
@@ -1010,19 +1024,6 @@ func (o *BucketOptimizer) rebalanceWinsToTargetRTP(weights []uint64, payouts []f
 
 	// Identify fixed indices that shouldn't be tilted (e.g. Max Win freq targets)
 	fixedIndices := make(map[int]bool)
-	if o.config.GlobalMaxWinFreq > 0 {
-		maxPayoutIdx := -1
-		maxPayout := 0.0
-		for i, p := range payouts {
-			if p > maxPayout {
-				maxPayout = p
-				maxPayoutIdx = i
-			}
-		}
-		if maxPayoutIdx >= 0 {
-			fixedIndices[maxPayoutIdx] = true
-		}
-	}
 
 	for _, bucket := range o.config.Buckets {
 		if bucket.Type == ConstraintMaxWinFreq && bucket.MaxWinFrequency > 0 {
@@ -1310,61 +1311,37 @@ func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignm
 		})
 	}
 
-	// Apply MaxWinFrequency overrides
-	for i, bucket := range assignments {
-		if bucket.config.Type == ConstraintMaxWinFreq && bucket.config.MaxWinFrequency > 0 && len(bucket.outcomeIndices) > 0 {
-			// Find max payout in this bucket
-			maxPayoutIdx := bucket.outcomeIndices[0]
-			maxPayout := payouts[maxPayoutIdx]
-			for _, idx := range bucket.outcomeIndices {
-				if payouts[idx] > maxPayout {
-					maxPayout = payouts[idx]
-					maxPayoutIdx = idx
-				}
-			}
-
-			// Calculate required weight (assuming totalWeight will be around baseWeight initially)
-			// A better approach is to use baseWeight
-			targetProb := 1.0 / bucket.config.MaxWinFrequency
-			requiredWeight := uint64(targetProb * float64(baseWeight))
-			if requiredWeight < o.config.MinWeight {
-				requiredWeight = o.config.MinWeight
-			}
-
-			oldW := weights[maxPayoutIdx]
-			weights[maxPayoutIdx] = requiredWeight
-			bucketResults[i].TotalWeight = bucketResults[i].TotalWeight - oldW + requiredWeight
-		}
+	// Apply MaxWinFrequency overrides.
+	// bucketResults is filtered (skips empty/voided buckets), so look up the
+	// matching result by bucket name to keep the index in sync.
+	resultIdxByName := make(map[string]int, len(bucketResults))
+	for i := range bucketResults {
+		resultIdxByName[bucketResults[i].Name] = i
 	}
-
-	if o.config.GlobalMaxWinFreq > 0 {
-		maxPayoutIdx := -1
-		maxPayout := 0.0
-		for i, p := range payouts {
-			if p > maxPayout {
-				maxPayout = p
-				maxPayoutIdx = i
+	for _, bucket := range assignments {
+		if bucket.config.Type != ConstraintMaxWinFreq || bucket.config.MaxWinFrequency <= 0 || len(bucket.outcomeIndices) == 0 {
+			continue
+		}
+		// Find max payout in this bucket
+		maxPayoutIdx := bucket.outcomeIndices[0]
+		maxPayout := payouts[maxPayoutIdx]
+		for _, idx := range bucket.outcomeIndices {
+			if payouts[idx] > maxPayout {
+				maxPayout = payouts[idx]
+				maxPayoutIdx = idx
 			}
 		}
 
-		if maxPayoutIdx >= 0 {
-			targetProb := 1.0 / o.config.GlobalMaxWinFreq
-			requiredWeight := uint64(targetProb * float64(baseWeight))
-			if requiredWeight < o.config.MinWeight {
-				requiredWeight = o.config.MinWeight
-			}
-			
-			oldW := weights[maxPayoutIdx]
-			weights[maxPayoutIdx] = requiredWeight
-			
-			// Adjust corresponding bucket's TotalWeight
-			for i, bucket := range assignments {
-				for _, idx := range bucket.outcomeIndices {
-					if idx == maxPayoutIdx {
-						bucketResults[i].TotalWeight = bucketResults[i].TotalWeight - oldW + requiredWeight
-					}
-				}
-			}
+		targetProb := 1.0 / bucket.config.MaxWinFrequency
+		requiredWeight := uint64(targetProb * float64(baseWeight))
+		if requiredWeight < o.config.MinWeight {
+			requiredWeight = o.config.MinWeight
+		}
+
+		oldW := weights[maxPayoutIdx]
+		weights[maxPayoutIdx] = requiredWeight
+		if ri, ok := resultIdxByName[bucket.config.Name]; ok {
+			bucketResults[ri].TotalWeight = bucketResults[ri].TotalWeight - oldW + requiredWeight
 		}
 	}
 
@@ -1586,9 +1563,6 @@ func ValidateBruteForceConfig(config *BucketOptimizerConfig) error {
 	}
 	if config.MaxIterations < 0 {
 		return fmt.Errorf("max_iterations cannot be negative")
-	}
-	if config.GlobalMaxWinFreq < 0 {
-		return fmt.Errorf("global_max_win_freq cannot be negative")
 	}
 	// OptimizationMode is no longer validated - runs until converged or stopped
 	return nil

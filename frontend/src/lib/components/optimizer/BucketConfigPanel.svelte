@@ -113,7 +113,6 @@
 
 	// Brute force optimization state (always enabled now as it is deterministic and instant)
 	let enableBruteForce = $state(true);
-	let globalMaxWinFreq = $state<number | null>(null);
 	let showAdvancedOptions = $state(false);
 
 	// Profile/Presets state
@@ -131,6 +130,10 @@
 
 	// Auto-voiding state (simple toggle - system selects outcomes automatically)
 	let enableAutoVoiding = $state(false);
+
+	// Maxwin hit rate override for Presets mode (1:N frequency of game's max payout)
+	// null = leave preset as-is; positive number = inject MAX bucket with this frequency.
+	let presetMaxWinFreq = $state<number | null>(10_000_000);
 
 	// Optimizer state indicator
 	type OptimizerState = 'idle' | 'running' | 'complete' | 'error';
@@ -154,10 +157,6 @@
 
 	// Debounce timer for preset loading
 	let loadPresetsDebounceTimer: ReturnType<typeof setTimeout> | null = null;
-
-	// MaxWin linked controls state
-	let maxWinFreq = $state<number>(50000); // 1:N frequency
-	let maxWinRtpContrib = $state<number>(1.0); // % of target RTP
 
 	const STORAGE_KEY = $derived(`lut_bucket_${mode}`);
 
@@ -360,9 +359,19 @@
 	}
 
 	function addBucket() {
-		const last = buckets[buckets.length - 1];
-		const min = last ? last.max_payout : 0;
-		buckets = [...buckets, { name: `b${buckets.length}`, min_payout: min, max_payout: min * 10 || 100, type: 'frequency', frequency: 50 }];
+		// Insert before the MAX bucket if one exists, otherwise append
+		const maxIdx = buckets.findIndex((b) => b.type === 'max_win_freq');
+		const insertAt = maxIdx >= 0 ? maxIdx : buckets.length;
+		const prev = buckets[insertAt - 1];
+		const min = prev ? prev.max_payout : 0;
+		const newBucket: BucketConfig = {
+			name: `b${buckets.length}`,
+			min_payout: min,
+			max_payout: min * 10 || 100,
+			type: 'frequency',
+			frequency: 50
+		};
+		buckets = [...buckets.slice(0, insertAt), newBucket, ...buckets.slice(insertAt)];
 	}
 
 	function removeBucket(index: number) {
@@ -374,16 +383,42 @@
 	function moveBucket(index: number, direction: -1 | 1) {
 		const newIndex = index + direction;
 		if (newIndex < 0 || newIndex >= buckets.length) return;
+		// MAX bucket is pinned to the bottom — never move it, never swap with it
+		if (buckets[index]?.type === 'max_win_freq' || buckets[newIndex]?.type === 'max_win_freq') return;
 		const newBuckets = [...buckets];
 		[newBuckets[index], newBuckets[newIndex]] = [newBuckets[newIndex], newBuckets[index]];
 		buckets = newBuckets;
 	}
 
+	// Game's actual max payout in user's current input format (absolute or normalized)
+	const maxPayoutInInputUnits = $derived.by(() => {
+		const absolute = modeInfo?.max_payout ?? 0;
+		if (absolute <= 0) return 0;
+		if (inputFormat === 'normalized' && modeInfo?.cost && modeInfo.cost > 0) {
+			return absolute / modeInfo.cost;
+		}
+		return absolute;
+	});
+
 	function setType(index: number, type: 'frequency' | 'rtp_percent' | 'auto' | 'max_win_freq') {
-		buckets = buckets.map((b, i) => {
+		const next = buckets.map((b, i) => {
+			// Demote any other MAX bucket — only one is allowed at a time
+			if (i !== index && type === 'max_win_freq' && b.type === 'max_win_freq') {
+				return { ...b, type: 'frequency' as const, frequency: b.frequency ?? 10, max_win_frequency: undefined };
+			}
 			if (i !== index) return b;
+			// When switching to MAX, lock the range tightly around the actual game max payout
+			let min = b.min_payout;
+			let max = b.max_payout;
+			if (type === 'max_win_freq' && maxPayoutInInputUnits > 0) {
+				const eps = Math.max(maxPayoutInInputUnits * 1e-4, 0.001);
+				min = maxPayoutInInputUnits - eps;
+				max = maxPayoutInInputUnits + eps;
+			}
 			return {
 				...b,
+				min_payout: min,
+				max_payout: max,
 				type,
 				frequency: type === 'frequency' ? (b.frequency ?? 10) : undefined,
 				rtp_percent: type === 'rtp_percent' ? (b.rtp_percent ?? 1) : undefined,
@@ -391,7 +426,16 @@
 				max_win_frequency: type === 'max_win_freq' ? (b.max_win_frequency ?? 50000) : undefined
 			};
 		});
+		// MAX bucket is always pinned at the bottom
+		const maxIdx = next.findIndex((b) => b.type === 'max_win_freq');
+		if (maxIdx >= 0 && maxIdx !== next.length - 1) {
+			const [maxB] = next.splice(maxIdx, 1);
+			next.push(maxB);
+		}
+		buckets = next;
 	}
+
+	const hasMaxBucket = $derived(buckets.some((b) => b.type === 'max_win_freq'));
 
 	async function runOptimization() {
 		isLoading = true;
@@ -408,6 +452,22 @@
 				error = 'Please select a preset first';
 				isLoading = false;
 				return;
+			}
+			// Inject/override the MAX bucket with the user-supplied maxwin hit rate
+			if (presetMaxWinFreq && presetMaxWinFreq > 0 && maxPayoutInInputUnits > 0) {
+				const eps = Math.max(maxPayoutInInputUnits * 1e-4, 0.001);
+				const maxBucket: BucketConfig = {
+					name: 'maxwin',
+					min_payout: maxPayoutInInputUnits - eps,
+					max_payout: maxPayoutInInputUnits + eps,
+					type: 'max_win_freq',
+					max_win_frequency: presetMaxWinFreq,
+					is_maxwin_bucket: true
+				};
+				const existingIdx = buckets.findIndex((b) => b.type === 'max_win_freq' || b.is_maxwin_bucket);
+				buckets = existingIdx >= 0
+					? buckets.map((b, i) => (i === existingIdx ? maxBucket : b))
+					: [...buckets, maxBucket];
 			}
 		}
 
@@ -426,13 +486,25 @@
 			return { ...b, name: `bucket_${i}`, min_payout: min, max_payout: max };
 		});
 
+		// MAX bucket is locked to a tight range around the actual max payout, which
+		// can leave a gap below it. Snap the bucket directly above to MAX's min so
+		// backend validation (no gaps) passes; the MAX bucket still contains only
+		// the actual max payout, so RTP semantics are preserved.
+		const maxIdx = bucketsWithNames.findIndex((b) => b.type === 'max_win_freq');
+		if (maxIdx > 0) {
+			const maxBucket = bucketsWithNames[maxIdx];
+			const prev = bucketsWithNames[maxIdx - 1];
+			if (prev.max_payout < maxBucket.min_payout) {
+				bucketsWithNames[maxIdx - 1] = { ...prev, max_payout: maxBucket.min_payout };
+			}
+		}
+
 		const config = {
 			target_rtp: targetRtp,
 			buckets: bucketsWithNames,
 			save_to_file: saveToFile,
 			create_backup: createBackup,
 			enable_brute_force: enableBruteForce,
-			global_max_win_freq: globalMaxWinFreq ?? undefined,
 			// Auto-voiding: system automatically selects outcomes to void
 			enable_auto_voiding: enableAutoVoiding
 		};
@@ -484,105 +556,6 @@
 
 	function formatPct(v: number): string {
 		return v < 0.01 ? v.toFixed(4) + '%' : v < 1 ? v.toFixed(2) + '%' : v.toFixed(1) + '%';
-	}
-
-	// MaxWin Frequency ↔ RTP Contribution conversion functions
-	// MaxWin payout from modeInfo (e.g., 5000x)
-	const maxPayout = $derived(modeInfo?.max_payout ?? 5000);
-
-	// Frequency → RTP% conversion
-	// RTP contribution = (1/freq) * maxPayout
-	// As % of target RTP = (contrib / targetRtp) * 100
-	function freqToRtp(freq: number): number {
-		if (freq <= 0) return 0;
-		const prob = 1 / freq;
-		const rtpContrib = prob * maxPayout;
-		return (rtpContrib / targetRtp) * 100; // as % of target RTP
-	}
-
-	// RTP% → Frequency conversion
-	// rtpContrib (absolute) = (rtpPercent / 100) * targetRtp
-	// prob = rtpContrib / maxPayout
-	// freq = 1 / prob
-	function rtpToFreq(rtpPercent: number): number {
-		if (rtpPercent <= 0 || maxPayout <= 0) return 100000;
-		const rtpContrib = (rtpPercent / 100) * targetRtp;
-		const prob = rtpContrib / maxPayout;
-		if (prob <= 0) return 100000;
-		return Math.round(1 / prob);
-	}
-
-	// MaxWin validation functions
-	function validateMaxWinFreq(freq: number): { value: number; warning: string | null } {
-		if (freq < 1) return { value: 1, warning: 'Min frequency: 1:1' };
-		if (freq > 20_000_000) return { value: 20_000_000, warning: 'Max frequency: 1:20M' };
-		return { value: Math.round(freq), warning: null };
-	}
-
-	function validateMaxWinRtp(rtp: number): { value: number; warning: string | null } {
-		if (rtp < 0.01) return { value: 0.01, warning: 'Min RTP: 0.01%' };
-		if (rtp > 10) return { value: 10, warning: 'Max RTP: 10% of target' };
-		return { value: Math.round(rtp * 100) / 100, warning: null };
-	}
-
-	// MaxWin validation state
-	let maxWinWarning = $state<string | null>(null);
-
-	// Handle frequency change - update RTP%
-	function onMaxWinFreqChange() {
-		const validated = validateMaxWinFreq(maxWinFreq);
-		maxWinFreq = validated.value;
-		maxWinWarning = validated.warning;
-		maxWinRtpContrib = Math.round(freqToRtp(maxWinFreq) * 100) / 100;
-		applyMaxWinToPreset();
-	}
-
-	// Handle RTP% change - update frequency
-	function onMaxWinRtpChange() {
-		const validated = validateMaxWinRtp(maxWinRtpContrib);
-		maxWinRtpContrib = validated.value;
-		maxWinWarning = validated.warning;
-		maxWinFreq = rtpToFreq(maxWinRtpContrib);
-		applyMaxWinToPreset();
-	}
-
-	// Auto-fill optimal maxwin values
-	function autoFillMaxWin() {
-		// Recommended: 0.5-2% of RTP for jackpot tier, 1% is a good default
-		const suggestedRtpPercent = 1.0;
-		maxWinRtpContrib = suggestedRtpPercent;
-		maxWinFreq = rtpToFreq(suggestedRtpPercent);
-		applyMaxWinToPreset();
-	}
-
-	// Apply maxwin settings to currently selected preset config
-	function applyMaxWinToPreset() {
-		const presetConfig = presetConfigsMap[selectedPreset];
-		if (!presetConfig) return;
-
-		// Parse current config
-		if (!fromShortConfig(presetConfig.b64_config)) return;
-
-		// Find or create maxwin bucket
-		const lastBucket = buckets[buckets.length - 1];
-		if (lastBucket && (lastBucket.is_maxwin_bucket || lastBucket.name === 'maxwin' || lastBucket.type === 'max_win_freq')) {
-			// Update existing maxwin bucket
-			lastBucket.type = 'rtp_percent';
-			lastBucket.rtp_percent = maxWinRtpContrib;
-			lastBucket.max_win_frequency = undefined;
-			buckets = [...buckets]; // trigger reactivity
-		} else {
-			// This shouldn't happen if presets are properly generated
-			// but add a maxwin bucket just in case
-			buckets = [...buckets, {
-				name: 'maxwin',
-				min_payout: maxPayout * 0.9,
-				max_payout: maxPayout + 1,
-				type: 'rtp_percent',
-				rtp_percent: maxWinRtpContrib,
-				is_maxwin_bucket: true
-			}];
-		}
 	}
 
 	// ABS/NORM display conversion for bonus modes
@@ -938,6 +911,28 @@
 			</div>
 		{/if}
 
+		<!-- Maxwin Hit Rate (PRESETS mode) -->
+		<div class="flex items-center justify-between p-3 rounded-xl bg-[var(--color-gold)]/5 border border-[var(--color-gold)]/20 mt-2">
+			<div class="flex items-center gap-2">
+				<span class="font-mono text-sm text-[var(--color-gold)]">MAX WIN HIT RATE</span>
+				<span class="text-xs font-mono text-[var(--color-mist)]">
+					{maxPayoutInInputUnits > 0 ? `${maxPayoutInInputUnits.toFixed(2)}x` : '—'} once per N spins
+				</span>
+			</div>
+			<div class="flex items-center gap-1.5">
+				<span class="text-sm text-[var(--color-gold)]">1:</span>
+				<input
+					type="number"
+					bind:value={presetMaxWinFreq}
+					placeholder="10000000"
+					class="w-28 px-2 py-1.5 text-sm font-mono bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20 rounded text-[var(--color-gold)] text-right focus:outline-none placeholder:text-[var(--color-gold)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+					step="100000"
+					min="1"
+					{disabled}
+				/>
+			</div>
+		</div>
+
 		<!-- Auto-Voiding Panel (PRESETS mode) -->
 		<div class="flex items-center justify-between p-3 rounded-xl bg-[var(--color-coral)]/5 border border-[var(--color-coral)]/20 mt-2">
 			<div class="flex items-center gap-2">
@@ -1172,7 +1167,7 @@
 						<button
 							class="p-0.5 text-[var(--color-mist)]/40 hover:text-[var(--color-gold)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
 							onclick={() => moveBucket(index, -1)}
-							disabled={disabled || index === 0}
+							disabled={disabled || index === 0 || bucket.type === 'max_win_freq' || buckets[index - 1]?.type === 'max_win_freq'}
 							title="Move up"
 						>
 							<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1182,7 +1177,7 @@
 						<button
 							class="p-0.5 text-[var(--color-mist)]/40 hover:text-[var(--color-gold)] disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
 							onclick={() => moveBucket(index, 1)}
-							disabled={disabled || index === buckets.length - 1}
+							disabled={disabled || index === buckets.length - 1 || bucket.type === 'max_win_freq' || buckets[index + 1]?.type === 'max_win_freq'}
 							title="Move down"
 						>
 							<svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -1192,22 +1187,30 @@
 					</div>
 
 					<!-- Range -->
-					<input
-						type="number"
-						bind:value={bucket.min_payout}
-						class="w-20 px-2 py-1.5 text-sm font-mono bg-[var(--color-slate)]/30 border border-white/[0.05] rounded text-[var(--color-light)] text-right focus:outline-none focus:border-[var(--color-gold)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-						step="0.1"
-						{disabled}
-					/>
-					<span class="text-xs text-[var(--color-mist)]">–</span>
-					<input
-						type="number"
-						bind:value={bucket.max_payout}
-						class="w-20 px-2 py-1.5 text-sm font-mono bg-[var(--color-slate)]/30 border border-white/[0.05] rounded text-[var(--color-light)] text-right focus:outline-none focus:border-[var(--color-gold)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-						step="0.1"
-						{disabled}
-					/>
-					<span class="text-xs text-[var(--color-mist)]">x</span>
+					{#if bucket.type === 'max_win_freq'}
+						<div class="flex items-center justify-center gap-1.5 w-[11.25rem] px-2 py-1.5 rounded bg-[var(--color-gold)]/10 border border-[var(--color-gold)]/20" title="Locked to game max payout">
+							<span class="text-xs font-mono text-[var(--color-gold)]/70">MAX</span>
+							<span class="text-sm font-mono text-[var(--color-gold)] tabular-nums">{maxPayoutInInputUnits > 0 ? maxPayoutInInputUnits.toFixed(2) : '—'}</span>
+							<span class="text-xs text-[var(--color-gold)]/70">x</span>
+						</div>
+					{:else}
+						<input
+							type="number"
+							bind:value={bucket.min_payout}
+							class="w-20 px-2 py-1.5 text-sm font-mono bg-[var(--color-slate)]/30 border border-white/[0.05] rounded text-[var(--color-light)] text-right focus:outline-none focus:border-[var(--color-gold)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+							step="0.1"
+							{disabled}
+						/>
+						<span class="text-xs text-[var(--color-mist)]">–</span>
+						<input
+							type="number"
+							bind:value={bucket.max_payout}
+							class="w-20 px-2 py-1.5 text-sm font-mono bg-[var(--color-slate)]/30 border border-white/[0.05] rounded text-[var(--color-light)] text-right focus:outline-none focus:border-[var(--color-gold)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+							step="0.1"
+							{disabled}
+						/>
+						<span class="text-xs text-[var(--color-mist)]">x</span>
+					{/if}
 
 					<!-- Type buttons -->
 					<div class="flex gap-0.5 ml-1">
@@ -1229,11 +1232,11 @@
 							title="Auto: remaining RTP, inverse weight"
 							{disabled}
 						>AUTO</button>
-						<button
-							class="px-2 py-1 text-xs font-mono rounded transition-all {bucket.type === 'max_win_freq' ? 'bg-[var(--color-coral)]/20 text-[var(--color-coral)]' : 'text-[var(--color-mist)]/70 hover:text-[var(--color-mist)]'}"
+							<button
+							class="px-2 py-1 text-xs font-mono rounded transition-all {bucket.type === 'max_win_freq' ? 'bg-[var(--color-coral)]/20 text-[var(--color-coral)]' : 'text-[var(--color-mist)]/70 hover:text-[var(--color-mist)]'} disabled:opacity-30 disabled:cursor-not-allowed"
 							onclick={() => setType(index, 'max_win_freq')}
-							title="Max Win Freq: frequency of the max payout outcome"
-							{disabled}
+							title={hasMaxBucket && bucket.type !== 'max_win_freq' ? 'Only one MAX bucket is allowed' : 'Max Win Freq: frequency of the max payout outcome'}
+							disabled={disabled || (hasMaxBucket && bucket.type !== 'max_win_freq')}
 						>MAX</button>
 					</div>
 
@@ -1319,23 +1322,6 @@
 		<div class="space-y-3 p-4 rounded-xl bg-[var(--color-onyx)]/50 border border-white/[0.05]">
 			<div class="flex items-center gap-2 mb-3">
 				<span class="text-sm font-mono text-[var(--color-light)]">{$_('optimizer.options')}</span>
-			</div>
-
-			<!-- Global Max Win Frequency -->
-			<div class="flex items-center justify-between">
-				<span class="text-sm font-mono text-[var(--color-mist)]">{$_('optimizer.maxWinFreq')}</span>
-				<div class="flex items-center gap-1.5">
-					<span class="text-sm text-[var(--color-coral)]">1:</span>
-					<input
-						type="number"
-						bind:value={globalMaxWinFreq}
-						placeholder="e.g. 50000"
-						class="w-28 px-2 py-1.5 text-sm font-mono bg-[var(--color-coral)]/10 border border-[var(--color-coral)]/20 rounded text-[var(--color-coral)] text-right focus:outline-none placeholder:text-[var(--color-coral)]/30 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-						step="1000"
-						min="100"
-						{disabled}
-					/>
-				</div>
 			</div>
 
 			<!-- Auto-Voiding Toggle -->

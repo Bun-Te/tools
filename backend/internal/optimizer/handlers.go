@@ -318,7 +318,6 @@ type BucketOptimizeRequest struct {
 	EnableBruteForce    bool             `json:"enable_brute_force,omitempty"`    // Enable iterative brute force search
 	MaxIterations       int              `json:"max_iterations,omitempty"`        // Max iterations for brute force
 	OptimizationMode    OptimizationMode `json:"optimization_mode,omitempty"`     // "fast"/"balanced"/"precise"
-	GlobalMaxWinFreq    float64          `json:"global_max_win_freq,omitempty"`   // Global max win frequency (1 in N)
 	EnableVoiding       bool             `json:"enable_voiding,omitempty"`        // DEPRECATED: Enable bucket voiding
 	VoidedBucketIndices []int            `json:"voided_bucket_indices,omitempty"` // DEPRECATED: Indices of buckets to void
 	EnableAutoVoiding   bool             `json:"enable_auto_voiding,omitempty"`   // Enable automatic outcome voiding to reach target RTP
@@ -386,7 +385,6 @@ func (h *Handlers) HandleBucketOptimize(w http.ResponseWriter, r *http.Request) 
 		EnableBruteForce:    req.EnableBruteForce,
 		MaxIterations:       req.MaxIterations,
 		OptimizationMode:    req.OptimizationMode,
-		GlobalMaxWinFreq:    req.GlobalMaxWinFreq,
 		EnableVoiding:       req.EnableVoiding,
 		VoidedBucketIndices: req.VoidedBucketIndices,
 		EnableAutoVoiding:   req.EnableAutoVoiding,
@@ -991,7 +989,6 @@ func (h *Handlers) HandleBruteForceOptimizeWS(w http.ResponseWriter, r *http.Req
 		EnableBruteForce:    true, // Always true for WS endpoint
 		MaxIterations:       req.MaxIterations,
 		OptimizationMode:    req.OptimizationMode,
-		GlobalMaxWinFreq:    req.GlobalMaxWinFreq,
 		EnableVoiding:       req.EnableVoiding,
 		VoidedBucketIndices: req.VoidedBucketIndices,
 	}

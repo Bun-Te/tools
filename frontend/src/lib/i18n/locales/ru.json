@@ -385,7 +385,6 @@
 		"noMatchingOutcomes": "бакет '{name}' не имеет подходящих исходов",
 		"iter": "итер",
 		"err": "ошиб",
-		"maxWinFreq": "ЧАСТОТА МАКСВИНА",
 		"wsConnectionFailed": "Ошибка WebSocket соединения",
 		"legendHelp": "ЧАСТОТА = 1 из N спинов | RTP = % от целевого | АВТО = остаток RTP (^exp) | МАКС = частота максвина",
 		"presets": "ПРЕСЕТЫ",

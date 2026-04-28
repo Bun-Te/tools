@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "bucket '{name}' ei sisällä vastaavia tuloksia",
 		"iter": "iter",
 		"err": "virhe",
-		"maxWinFreq": "MAX VOITTO TAAJ",
 		"wsConnectionFailed": "WebSocket-yhteys epäonnistui",
 		"legendHelp": "TAAJ = 1 / N pyöritystä | RTP = % tavoitteesta | AUTO = jäljellä oleva RTP (^exp) | MAX = max voitto taaj",
 		"presets": "ESIASETUKSET",

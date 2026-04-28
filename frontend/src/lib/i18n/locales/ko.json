@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "버킷 '{name}'에 일치하는 결과가 없습니다",
 		"iter": "반복",
 		"err": "오류",
-		"maxWinFreq": "최대 당첨 빈도",
 		"wsConnectionFailed": "WebSocket 연결 실패",
 		"legendHelp": "빈도 = N 스핀 중 1 | RTP = 목표의 % | 자동 = 남은 RTP (^exp) | 최대 = 최대 당첨 빈도",
 		"presets": "프리셋",

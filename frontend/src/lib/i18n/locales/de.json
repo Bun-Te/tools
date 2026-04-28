@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "Bucket '{name}' hat keine passenden Ergebnisse",
 		"iter": "Iter",
 		"err": "Fehler",
-		"maxWinFreq": "MAX-GEWINN-FREQ",
 		"wsConnectionFailed": "WebSocket-Verbindung fehlgeschlagen",
 		"legendHelp": "FREQ = 1 in N Drehungen | RTP = % des Ziels | AUTO = verbleibendes RTP (^exp) | MAX = Max-Gewinn-Freq",
 		"presets": "VOREINSTELLUNGEN",

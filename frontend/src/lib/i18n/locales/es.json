@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "el cubo '{name}' no tiene resultados coincidentes",
 		"iter": "iter",
 		"err": "err",
-		"maxWinFreq": "FREC GANANCIA MÁX",
 		"wsConnectionFailed": "Conexión WebSocket fallida",
 		"legendHelp": "FREC = 1 en N giros | RTP = % del objetivo | AUTO = RTP restante (^exp) | MÁX = frec ganancia máx",
 		"presets": "PREAJUSTES",

@@ -675,7 +675,6 @@ export interface BucketOptimizeRequest {
 	enable_brute_force?: boolean;   // Enable iterative brute force search
 	max_iterations?: number;        // Max iterations for brute force
 	optimization_mode?: OptimizationMode; // "fast"/"balanced"/"precise"
-	global_max_win_freq?: number;   // Global max win frequency (1 in N)
 	// Voiding options (deprecated - use enable_auto_voiding)
 	enable_voiding?: boolean;       // DEPRECATED: Enable voiding mode to exclude buckets
 	voided_bucket_indices?: number[]; // DEPRECATED: Indices of buckets to void

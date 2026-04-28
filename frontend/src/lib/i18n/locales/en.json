@@ -435,7 +435,6 @@
 		"noMatchingOutcomes": "bucket '{name}' has no matching outcomes",
 		"iter": "iter",
 		"err": "err",
-		"maxWinFreq": "MAX WIN FREQ",
 		"wsConnectionFailed": "WebSocket connection failed",
 		"legendHelp": "FREQ = 1 in N spins | RTP = % of target | AUTO = remaining RTP (^exp) | MAX = max win freq",
 		"presets": "PRESETS",

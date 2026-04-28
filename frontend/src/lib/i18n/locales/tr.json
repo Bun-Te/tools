@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "'{name}' bucket'ında eşleşen sonuç yok",
 		"iter": "iter",
 		"err": "hata",
-		"maxWinFreq": "MAKS KAZANÇ FREK",
 		"wsConnectionFailed": "WebSocket bağlantısı başarısız",
 		"legendHelp": "FREK = N dönüşte 1 | RTP = hedefin %'si | OTO = kalan RTP (^exp) | MAKS = maks kazanç frek",
 		"presets": "ÖN AYARLAR",

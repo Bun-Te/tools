@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "bucket '{name}' không có kết quả phù hợp",
 		"iter": "lặp",
 		"err": "lỗi",
-		"maxWinFreq": "TẦN SUẤT THẮNG TỐI ĐA",
 		"wsConnectionFailed": "Kết nối WebSocket thất bại",
 		"legendHelp": "TẦN SUẤT = 1 trong N vòng quay | RTP = % của mục tiêu | TỰ ĐỘNG = RTP còn lại (^exp) | TỐI ĐA = tần suất thắng tối đa",
 		"presets": "CÀI ĐẶT SẴN",

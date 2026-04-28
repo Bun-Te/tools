@@ -389,7 +389,6 @@
 		"noMatchingOutcomes": "桶 '{name}' 没有匹配的结果",
 		"iter": "迭代",
 		"err": "错误",
-		"maxWinFreq": "最大赢频率",
 		"wsConnectionFailed": "WebSocket连接失败",
 		"legendHelp": "频率 = 每N次旋转1次 | RTP = 目标百分比 | 自动 = 剩余RTP (^exp) | 最大 = 最大赢频率",
 		"presets": "预设",
