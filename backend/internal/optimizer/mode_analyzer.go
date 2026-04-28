@@ -49,6 +49,12 @@ type ModeAnalysis struct {
 	Feasible           bool                   `json:"feasible"`
 	FeasibilityNote    string                 `json:"feasibility_note,omitempty"`
 	SuggestedRTP       float64                `json:"suggested_rtp,omitempty"` // Suggested RTP if target is infeasible
+
+	// WinPayouts is the full list of normalized non-zero payouts (cost-divided).
+	// Used by the config generator to pick a feasible volatility exponent that
+	// keeps the implied total win probability ≤ 1 (any p>0 counts as a hit,
+	// including sub-1x outcomes — matches optimizer's totalWinWeight logic).
+	WinPayouts []float64 `json:"-"`
 }
 
 // BucketRecommendation recommends bucket configuration based on LUT analysis
@@ -183,6 +189,7 @@ func (a *ModeAnalyzer) AnalyzeTable(table *stakergs.LookupTable, mode string, ta
 		Feasible:         feasible,
 		FeasibilityNote:  feasibilityNote,
 		SuggestedRTP:     suggestedRTP,
+		WinPayouts:       winPayouts,
 	}, nil
 }
 

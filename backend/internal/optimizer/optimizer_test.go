@@ -250,13 +250,13 @@ func TestValidateBuckets(t *testing.T) {
 		t.Errorf("Auto bucket should be valid: %v", err)
 	}
 
-	// Test auto bucket with negative exponent
-	invalidAuto := []BucketConfig{
+	// Negative auto_exponent is now valid (used by HIGH-vol presets to bias mass
+	// toward larger payouts). Validation should accept it.
+	negAuto := []BucketConfig{
 		{Name: "auto", MinPayout: 0, MaxPayout: 100, Type: ConstraintAuto, AutoExponent: -1.0},
 	}
-	err = ValidateBuckets(invalidAuto)
-	if err == nil {
-		t.Error("Should detect negative auto_exponent")
+	if err = ValidateBuckets(negAuto); err != nil {
+		t.Errorf("Negative auto_exponent should be valid now: %v", err)
 	}
 }
 

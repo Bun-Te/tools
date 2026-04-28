@@ -3,6 +3,7 @@ package optimizer
 import (
 	"encoding/base64"
 	"encoding/json"
+	"math"
 	"testing"
 )
 
@@ -13,7 +14,7 @@ func TestConfigGenerator_GenerateAllProfiles(t *testing.T) {
 	targetRTP := 0.96
 	maxWin := 5000.0
 
-	response := gen.GenerateAllProfiles(targetRTP, maxWin)
+	response := gen.GenerateAllProfiles(targetRTP, maxWin, DefaultMaxWinFreq)
 
 	if len(response.Configs) != 3 {
 		t.Errorf("Expected 3 profiles, got %d", len(response.Configs))
@@ -55,9 +56,9 @@ func TestConfigGenerator_GenerateAllProfiles(t *testing.T) {
 			continue
 		}
 
-		// Verify RTP matches
-		if short.R != int(targetRTP*100) {
-			t.Errorf("Config %d (%s): expected RTP %d, got %d", i, config.Profile, int(targetRTP*100), short.R)
+		// Verify RTP matches (within float tolerance)
+		if math.Abs(short.R-targetRTP*100) > 1e-6 {
+			t.Errorf("Config %d (%s): expected RTP %g, got %g", i, config.Profile, targetRTP*100, short.R)
 		}
 
 		// Verify bucket count matches
@@ -72,7 +73,7 @@ func TestConfigGenerator_GenerateAllProfiles(t *testing.T) {
 
 func TestConfigGenerator_GenerateConfig_LowVol(t *testing.T) {
 	gen := NewConfigGenerator()
-	config := gen.GenerateConfig(0.96, 5000, ProfileLowVol)
+	config := gen.GenerateConfig(0.96, 5000, DefaultMaxWinFreq, ProfileLowVol)
 
 	// Low vol should have higher avg hit rate (more frequent wins)
 	if config.Stats.AvgHitRate == 0 {
@@ -92,7 +93,7 @@ func TestConfigGenerator_GenerateConfig_LowVol(t *testing.T) {
 
 func TestConfigGenerator_GenerateConfig_HighVol(t *testing.T) {
 	gen := NewConfigGenerator()
-	config := gen.GenerateConfig(0.96, 5000, ProfileHighVol)
+	config := gen.GenerateConfig(0.96, 5000, DefaultMaxWinFreq, ProfileHighVol)
 
 	// High vol should have lower avg hit rate (less frequent wins)
 	if config.Stats.AvgHitRate == 0 {
@@ -124,7 +125,7 @@ func TestConfigGenerator_DifferentMaxWins(t *testing.T) {
 	}
 
 	for _, tc := range testCases {
-		config := gen.GenerateConfig(0.96, tc.maxWin, ProfileMediumVol)
+		config := gen.GenerateConfig(0.96, tc.maxWin, DefaultMaxWinFreq, ProfileMediumVol)
 
 		if len(config.Buckets) < tc.expectedMinBuckets {
 			t.Errorf("Max win %.0f: expected at least %d buckets, got %d",
@@ -145,7 +146,7 @@ func TestConfigGenerator_DifferentMaxWins(t *testing.T) {
 
 func TestConfigGenerator_B64RoundTrip(t *testing.T) {
 	gen := NewConfigGenerator()
-	config := gen.GenerateConfig(0.97, 3000, ProfileMediumVol)
+	config := gen.GenerateConfig(0.97, 3000, DefaultMaxWinFreq, ProfileMediumVol)
 
 	// Decode b64
 	decoded, err := base64.StdEncoding.DecodeString(config.B64Config)
@@ -159,8 +160,8 @@ func TestConfigGenerator_B64RoundTrip(t *testing.T) {
 	}
 
 	// Verify RTP
-	if short.R != 97 {
-		t.Errorf("Expected RTP 97, got %d", short.R)
+	if math.Abs(short.R-97) > 1e-6 {
+		t.Errorf("Expected RTP 97, got %g", short.R)
 	}
 
 	// Verify buckets match
@@ -217,7 +218,7 @@ func TestConfigGenerator_Validation(t *testing.T) {
 	}
 
 	for _, profile := range profiles {
-		config := gen.GenerateConfig(0.96, 5000, profile)
+		config := gen.GenerateConfig(0.96, 5000, DefaultMaxWinFreq, profile)
 
 		if err := ValidateGeneratedConfig(config); err != nil {
 			t.Errorf("Profile %s: validation failed: %v", profile, err)

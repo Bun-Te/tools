@@ -60,7 +60,7 @@ type ConfigGeneratorResponse struct {
 
 // ShortConfig is the compact b64 format for frontend
 type ShortConfig struct {
-	R int       `json:"r"` // RTP * 100 (e.g., 96 for 96%)
+	R float64   `json:"r"` // RTP * 100 (e.g., 97.8 for 97.8%) — float to preserve precision
 	B [][]any   `json:"b"` // [[min, max, type(0/1/2), value], ...]
 }
 
@@ -84,8 +84,38 @@ func (g *ConfigGenerator) SetAnalyzer(analyzer *ModeAnalyzer) {
 	g.analyzer = analyzer
 }
 
+// DefaultMaxWinFreq is used when callers don't supply a maxwin frequency.
+// 1 in 10M is conservative — typical industry-grade max win hit rate.
+const DefaultMaxWinFreq = 10_000_000.0
+
+// profileAlpha returns the volatility shape exponent for a profile.
+// Higher α  → steeper decay → mass on small payouts → low std dev, thin tail.
+// Lower α   → fatter tail   → mass on big payouts   → high std dev, fat tail.
+// Hit rate naturally follows from α; profiles differ in shape, not in target RTP.
+func profileAlpha(profile PlayerProfile) float64 {
+	// Mild values are mandatory at high target RTP. Steep α blows total prob > 1
+	// (since per-outcome prob ∝ p^(-α) is dominated by sub-1x payouts), the
+	// optimizer collapses loss to MinWeight and RTP severely undershoots.
+	// These tuned values keep total prob ≤ 1 across typical slot LUTs while
+	// preserving distinguishable shape across LOW/MED/HIGH.
+	// Initial guess; the generator's bisection then nudges α into the feasible
+	// hit-rate band [1/18, 0.95]. For typical slot LUTs (no extreme sub-1x mass)
+	// these stay close to the requested values; for sub-1x-heavy LUTs they
+	// converge toward each other (volatility shape gets bounded by physics).
+	switch profile {
+	case ProfileLowVol:
+		return 1.5
+	case ProfileMediumVol:
+		return 0.7
+	case ProfileHighVol:
+		return -0.3
+	default:
+		return 0.7
+	}
+}
+
 // GenerateAllProfiles generates configs for all profiles
-func (g *ConfigGenerator) GenerateAllProfiles(targetRTP, maxWin float64) *ConfigGeneratorResponse {
+func (g *ConfigGenerator) GenerateAllProfiles(targetRTP, maxWin, maxWinFreq float64) *ConfigGeneratorResponse {
 	profiles := []PlayerProfile{
 		ProfileLowVol,
 		ProfileMediumVol,
@@ -97,39 +127,26 @@ func (g *ConfigGenerator) GenerateAllProfiles(targetRTP, maxWin float64) *Config
 	}
 
 	for _, profile := range profiles {
-		config := g.GenerateConfig(targetRTP, maxWin, profile)
+		config := g.GenerateConfig(targetRTP, maxWin, maxWinFreq, profile)
 		response.Configs = append(response.Configs, *config)
 	}
 
 	return response
 }
 
-// GenerateConfig generates a config for a specific profile using Power Law
-func (g *ConfigGenerator) GenerateConfig(targetRTP, maxWin float64, profile PlayerProfile) *GeneratedConfig {
-	// 1. Determine Target Hit Rate based on Profile
-	// User requirement: hit rate N cannot exceed 18 (P_win >= 1/18)
-	var targetHitRate float64
-	switch profile {
-	case ProfileLowVol:
-		targetHitRate = 5 // 1 in 5 (very frequent)
-	case ProfileMediumVol:
-		targetHitRate = 10 // 1 in 10
-	case ProfileHighVol:
-		targetHitRate = 18 // 1 in 18 (the maximum allowed N)
-	default:
-		targetHitRate = 10
+// GenerateConfig generates a config for a specific profile using Power Law.
+// Bucket RTPs (excluding the MAX bucket) sum exactly to targetRTP - maxWinRTP, so
+// the math closes to targetRTP regardless of which profile / α is used.
+func (g *ConfigGenerator) GenerateConfig(targetRTP, maxWin, maxWinFreq float64, profile PlayerProfile) *GeneratedConfig {
+	if maxWinFreq <= 0 {
+		maxWinFreq = DefaultMaxWinFreq
 	}
 
-	// 2. Define bucket boundaries based on maxWin
 	boundaries := g.calculateBucketBoundaries(maxWin)
+	// Legacy path has no payout list — feasibility check falls back to boundary midpoints.
+	buckets := g.generatePowerLawBuckets(boundaries, targetRTP, maxWin, maxWinFreq, profileAlpha(profile), nil)
 
-	// 3. Generate Power Law distributed buckets
-	buckets := g.generatePowerLawBuckets(boundaries, targetRTP, targetHitRate)
-
-	// Calculate b64 config
 	b64Config := g.toB64Config(targetRTP, buckets)
-
-	// Calculate stats
 	stats := g.calculateStats(buckets, targetRTP)
 
 	return &GeneratedConfig{
@@ -169,87 +186,235 @@ func (g *ConfigGenerator) calculateBucketBoundaries(maxWin float64) []float64 {
 	return valid
 }
 
-// generatePowerLawBuckets creates bucket configs using a Bisection Search on the Power Law exponent
-func (g *ConfigGenerator) generatePowerLawBuckets(boundaries []float64, targetRTP, targetHitRate float64) []BucketConfig {
-	numBuckets := len(boundaries) - 1
-	if numBuckets <= 0 {
+// densifyBoundaries inserts log-spaced midpoints between consecutive boundaries
+// whose ratio exceeds maxRatio. Keeps the slice strictly increasing.
+// Useful when analyzer-derived percentile boundaries leave a 5x+ gap at the top
+// (e.g. 786 → 5050) that would otherwise become one fat bucket.
+func densifyBoundaries(b []float64, maxRatio float64) []float64 {
+	if len(b) < 2 || maxRatio <= 1 {
+		return b
+	}
+	out := make([]float64, 0, len(b)*2)
+	out = append(out, b[0])
+	for i := 1; i < len(b); i++ {
+		prev := out[len(out)-1]
+		cur := b[i]
+		// If lower edge is zero/sub-1, anchor on 1 before applying ratio test
+		if prev <= 1 && cur > 1 {
+			out = append(out, 1)
+			prev = 1
+		}
+		for prev > 0 && cur/prev > maxRatio {
+			mid := math.Sqrt(prev * cur)
+			// Round to a sensible scale to keep numbers readable
+			scale := math.Pow(10, math.Floor(math.Log10(mid))-1)
+			if scale > 0 {
+				mid = math.Round(mid/scale) * scale
+			}
+			if mid <= prev || mid >= cur {
+				break
+			}
+			out = append(out, mid)
+			prev = mid
+		}
+		out = append(out, cur)
+	}
+	return out
+}
+
+// generatePowerLawBuckets builds buckets so that math closes exactly to targetRTP:
+//
+//	maxWinRTP = maxWinPayout / maxWinFreq
+//	distributableRTP = targetRTP - maxWinRTP
+//	rtp_i ∝ x_i^(1-α)        (power-law shape; α = volatility exponent)
+//	sum(rtp_i) == distributableRTP   →   sum(rtp_i) + maxWinRTP == targetRTP
+//
+// All non-MAX buckets are emitted as ConstraintRTPPercent (their RTPPercent values
+// sum exactly to distributableRTP/targetRTP*100 with full float precision). The
+// MAX bucket carries the supplied maxWinFreq verbatim. Inputs are in NORMALIZED
+// payout units (cost-divided), so this works unchanged for bonus modes.
+func (g *ConfigGenerator) generatePowerLawBuckets(boundaries []float64, targetRTP, maxWinPayout, maxWinFreq, alpha float64, winPayouts []float64) []BucketConfig {
+	if len(boundaries) < 2 {
 		return []BucketConfig{}
 	}
+	if maxWinFreq <= 0 {
+		maxWinFreq = DefaultMaxWinFreq
+	}
 
-	x := make([]float64, numBuckets)
-	for i := 0; i < numBuckets; i++ {
-		// Use harmonic mean or arithmetic mean for the bucket center
-		// Arithmetic mean works fine for defining the power law curve
-		x[i] = (boundaries[i] + boundaries[i+1]) / 2.0
-		if x[i] <= 0 {
-			x[i] = 0.5
+	// Always carve out a dedicated tight MAX bucket around the actual game maxPayout
+	// so it captures only the absolute max and not the whole "jackpot" percentile band.
+	// Densify regular boundaries where adjacent ratio > 4 so distribution doesn't
+	// collapse into one fat top bucket.
+	if maxWinPayout <= 0 {
+		// Fall back: treat the last input boundary as the max.
+		maxWinPayout = boundaries[len(boundaries)-1]
+	}
+	// Tight MAX range. Default ε is fixed-fraction of maxWin (works without
+	// payout list), but when winPayouts are available, snap maxLower halfway
+	// between maxWinPayout and the second-highest distinct payout. This ensures
+	// the MAX bucket contains EXACTLY one outcome (the absolute max), so the
+	// user-displayed bucket frequency equals the configured 1:N — no aggregate
+	// from near-max outcomes inflating the apparent hit rate.
+	eps := math.Max(maxWinPayout*1e-4, 0.001)
+	maxLower := maxWinPayout - eps
+	maxUpper := maxWinPayout + eps
+	if len(winPayouts) > 0 {
+		// Find the largest distinct payout strictly less than maxWinPayout.
+		secondMax := 0.0
+		for _, p := range winPayouts {
+			if p < maxWinPayout && p > secondMax {
+				secondMax = p
+			}
+		}
+		if secondMax > 0 && secondMax < maxWinPayout {
+			// Cut just above secondMax — by definition no payout lies strictly
+			// between secondMax and maxWinPayout, so the MAX bucket then contains
+			// outcomes only at p == maxWinPayout. ALWAYS apply (override default
+			// ε-based maxLower), so user-displayed bucket frequency = configured 1:N.
+			gap := maxWinPayout - secondMax
+			snapLower := secondMax + gap*0.5
+			maxLower = snapLower
+			// Also ensure maxUpper sits strictly above maxWinPayout
+			if maxUpper <= maxWinPayout {
+				maxUpper = maxWinPayout + math.Max(gap*0.5, 0.001)
+			}
 		}
 	}
 
-	// We want to find alpha such that:
-	// sum(x_i^(1-alpha)) / sum(x_i^(-alpha)) = TargetRTP * TargetHitRate
-	targetRatio := targetRTP * targetHitRate
-
-	lowAlpha := -10.0
-	highAlpha := 10.0
-
-	calcRatio := func(alpha float64) float64 {
-		sumNum := 0.0
-		sumDen := 0.0
-		for _, xi := range x {
-			sumNum += math.Pow(xi, 1.0-alpha)
-			sumDen += math.Pow(xi, -alpha)
+	// Keep only original boundaries strictly below maxLower (with a tiny safety margin).
+	regular := make([]float64, 0, len(boundaries)+4)
+	for _, b := range boundaries {
+		if b < maxLower*0.999 {
+			regular = append(regular, b)
 		}
-		if sumDen == 0 {
+	}
+	if len(regular) == 0 {
+		regular = append(regular, 0)
+	}
+	// Cap with maxLower so we have a clean handoff to the MAX bucket.
+	if regular[len(regular)-1] < maxLower {
+		regular = append(regular, maxLower)
+	}
+	// Densify any pair (a,b) with b/a > 4 by inserting log-spaced midpoints.
+	regular = densifyBoundaries(regular, 4.0)
+
+	// Final boundary list: regular + maxUpper. Last bucket is the MAX bucket.
+	boundaries = append(regular, maxUpper)
+	numBuckets := len(boundaries) - 1
+
+	// Maxwin RTP claim. If it would consume more than 99% of target, clamp so the
+	// power-law part still has a meaningful budget. Optimizer's tilt-rebalance
+	// handles the residual rounding.
+	maxWinRTP := 0.0
+	if maxWinPayout > 0 {
+		maxWinRTP = maxWinPayout / maxWinFreq
+	}
+	maxAllowedMaxwin := targetRTP * 0.99
+	if maxWinRTP > maxAllowedMaxwin {
+		maxWinRTP = maxAllowedMaxwin
+	}
+	distributableRTP := targetRTP - maxWinRTP
+
+	// Last bucket is the dedicated MAX bucket; rest get the power-law allocation
+	// via ConstraintAuto. Auto distributes per-OUTCOME prob ∝ payout^(-α) and
+	// scales so that sum of bucket RTPs == remainingRTP (= targetRTP - maxWinRTP).
+	// This closes math exactly using the optimizer's harmonic-mean-aware machinery
+	// instead of the generator's arithmetic-midpoint approximation, which broke
+	// closure for steep α (LOW vol) where implied per-bucket prob exceeded 1.
+	// All non-MAX auto buckets share the same exponent — they're effectively a
+	// single distribution partitioned for display.
+	nonMaxCount := numBuckets - 1
+	buckets := make([]BucketConfig, 0, numBuckets)
+
+	// Estimate feasible α: with the requested α, per-outcome prob ∝ p^(-α).
+	// Total prob = distributableRTP * Σp^(-α) / Σp^(1-α). If that exceeds the win
+	// probability budget (≤ 1 - 1/lossMin; we use 0.7 as a safety margin), the
+	// optimizer ends up with totalWinProb > 1, loss collapses to MinWeight, and
+	// the actual achieved RTP ≈ remainingRTP / total_prob → undershoot.
+	// Lower α (less steep) until feasible. The shape stays distinguishable across
+	// profiles even after capping (LOW/MED/HIGH still rank in steepness).
+	// Use REAL outcome payouts when available (every p > 0 counts as a hit per
+	// optimizer's totalWinWeight check). Falls back to boundary midpoints in
+	// the legacy non-adaptive path where we have no outcome list.
+	probePayouts := winPayouts
+	if len(probePayouts) == 0 {
+		probePayouts = make([]float64, 0, nonMaxCount)
+		for i := 0; i < nonMaxCount; i++ {
+			mid := (boundaries[i] + boundaries[i+1]) / 2.0
+			if mid <= 0 {
+				mid = 0.5
+			}
+			probePayouts = append(probePayouts, mid)
+		}
+	}
+	// Bisection on α to keep total win prob in [pMin, pMax]:
+	//  - pMin = 1/18 + tiny margin (avoid the optimizer's hit-rate clamp, which
+	//    distorts MaxWin frequency by inflating loss weight).
+	//  - pMax = 0.95 (leave at least 5% of spins for losses).
+	// total_prob is monotone increasing in α, so a binary search converges fast.
+	const (
+		pMin = 1.0/18.0 + 1.0/200.0
+		pMax = 0.95
+	)
+	computeTotalProb := func(a float64) float64 {
+		var sumPow, sumPowM1 float64
+		for _, p := range probePayouts {
+			if p <= 0 {
+				continue
+			}
+			sumPow += math.Pow(p, -a)
+			sumPowM1 += math.Pow(p, 1-a)
+		}
+		if sumPowM1 <= 0 {
 			return 0
 		}
-		return sumNum / sumDen
+		return distributableRTP * sumPow / sumPowM1
 	}
-
-	// Bisection search for alpha
-	for i := 0; i < 60; i++ {
-		mid := (lowAlpha + highAlpha) / 2.0
-		if calcRatio(mid) > targetRatio {
-			lowAlpha = mid // calcRatio is strictly decreasing w.r.t alpha
-		} else {
-			highAlpha = mid
+	feasibleAlpha := alpha
+	lo, hi := -3.0, 5.0
+	if feasibleAlpha < lo {
+		feasibleAlpha = lo
+	}
+	if feasibleAlpha > hi {
+		feasibleAlpha = hi
+	}
+	for iter := 0; iter < 60; iter++ {
+		tp := computeTotalProb(feasibleAlpha)
+		if tp >= pMin && tp <= pMax {
+			break
 		}
-	}
-
-	bestAlpha := (lowAlpha + highAlpha) / 2.0
-
-	// Calculate Probabilities P_i
-	sumDen := 0.0
-	for _, xi := range x {
-		sumDen += math.Pow(xi, -bestAlpha)
-	}
-
-	buckets := make([]BucketConfig, numBuckets)
-	for i := 0; i < numBuckets; i++ {
-		prob := (1.0 / targetHitRate) * (math.Pow(x[i], -bestAlpha) / sumDen)
-		rtpContrib := prob * x[i]
-		rtpPercent := (rtpContrib / targetRTP) * 100.0
-
-		isMaxWin := i == numBuckets-1
-
-		b := BucketConfig{
-			MinPayout: boundaries[i],
-			MaxPayout: boundaries[i+1],
+		if tp > pMax {
+			hi = feasibleAlpha
+		} else { // tp < pMin
+			lo = feasibleAlpha
 		}
-
-		if isMaxWin {
-			b.Name = "maxwin"
-			b.IsMaxWinBucket = true
-			b.Type = ConstraintMaxWinFreq
-			b.MaxWinFrequency = math.Round(1.0 / prob)
-		} else {
-			b.Name = fmt.Sprintf("bucket_%.2f_%.2f", boundaries[i], boundaries[i+1])
-			b.Type = ConstraintRTPPercent
-			b.RTPPercent = math.Round(rtpPercent*1000) / 1000 // Keep precision
+		next := (lo + hi) / 2
+		if math.Abs(next-feasibleAlpha) < 1e-4 {
+			feasibleAlpha = next
+			break
 		}
-
-		buckets[i] = b
+		feasibleAlpha = next
 	}
+
+	for i := 0; i < nonMaxCount; i++ {
+		buckets = append(buckets, BucketConfig{
+			Name:         fmt.Sprintf("bucket_%.2f_%.2f", boundaries[i], boundaries[i+1]),
+			MinPayout:    boundaries[i],
+			MaxPayout:    boundaries[i+1],
+			Type:         ConstraintAuto,
+			AutoExponent: feasibleAlpha,
+		})
+	}
+
+	// MAX bucket — frequency is verbatim so that RTP math stays exact.
+	buckets = append(buckets, BucketConfig{
+		Name:            "maxwin",
+		MinPayout:       boundaries[numBuckets-1],
+		MaxPayout:       boundaries[numBuckets],
+		Type:            ConstraintMaxWinFreq,
+		MaxWinFrequency: maxWinFreq,
+		IsMaxWinBucket:  true,
+	})
 
 	return buckets
 }
@@ -281,7 +446,7 @@ func (g *ConfigGenerator) toB64Config(targetRTP float64, buckets []BucketConfig)
 	}
 
 	short := ShortConfig{
-		R: int(math.Round(targetRTP * 100)),
+		R: targetRTP * 100,
 		B: shortBuckets,
 	}
 
@@ -415,17 +580,21 @@ func ValidateGeneratedConfig(config *GeneratedConfig) error {
 
 // GenerateAdaptiveConfig generates a config using LUT analysis for adaptive bucket generation
 // This method uses mode analysis to handle extreme RTP values and non-standard payout ranges
-func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin float64, profile PlayerProfile) (*GeneratedConfig, error) {
+func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin, maxWinFreq float64, profile PlayerProfile) (*GeneratedConfig, error) {
+	if maxWinFreq <= 0 {
+		maxWinFreq = DefaultMaxWinFreq
+	}
+
 	if g.analyzer == nil {
 		// Fallback to legacy generation
-		return g.GenerateConfig(targetRTP, maxWin, profile), nil
+		return g.GenerateConfig(targetRTP, maxWin, maxWinFreq, profile), nil
 	}
 
 	// Analyze the mode
 	analysis, err := g.analyzer.AnalyzeMode(mode, targetRTP)
 	if err != nil {
 		// Fallback to legacy generation on analysis failure
-		return g.GenerateConfig(targetRTP, maxWin, profile), nil
+		return g.GenerateConfig(targetRTP, maxWin, maxWinFreq, profile), nil
 	}
 
 	// Determine effective RTP (adjust if infeasible)
@@ -447,19 +616,6 @@ func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin 
 		actualMaxWin = maxWin
 	}
 
-	// Determine Target Hit Rate based on Profile
-	var targetHitRate float64
-	switch profile {
-	case ProfileLowVol:
-		targetHitRate = 5 // 1 in 5 (very frequent)
-	case ProfileMediumVol:
-		targetHitRate = 10 // 1 in 10
-	case ProfileHighVol:
-		targetHitRate = 18 // 1 in 18 (the maximum allowed N)
-	default:
-		targetHitRate = 10
-	}
-
 	// Extract boundaries from analysis recommendations
 	var boundaries []float64
 	if len(analysis.RecommendedBuckets) > 0 {
@@ -471,12 +627,14 @@ func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin 
 		boundaries = g.calculateBucketBoundaries(actualMaxWin)
 	}
 
-	// Generate Power Law distributed buckets
-	buckets := g.generatePowerLawBuckets(boundaries, effectiveRTP, targetHitRate)
+	// Generate Power Law distributed buckets. Pass real win payouts so the
+	// generator picks an α that keeps total win prob ≤ 1 against the actual LUT
+	// (every p > 0 counts as a hit, including sub-1x outcomes).
+	buckets := g.generatePowerLawBuckets(boundaries, effectiveRTP, actualMaxWin, maxWinFreq, profileAlpha(profile), analysis.WinPayouts)
 
 	// Fallback if no buckets generated
 	if len(buckets) == 0 {
-		return g.GenerateConfig(effectiveRTP, actualMaxWin, profile), nil
+		return g.GenerateConfig(effectiveRTP, actualMaxWin, maxWinFreq, profile), nil
 	}
 
 	// Create b64 config
@@ -508,7 +666,11 @@ func (g *ConfigGenerator) GenerateAdaptiveConfig(mode string, targetRTP, maxWin 
 }
 
 // GenerateAllAdaptiveProfiles generates adaptive configs for all profiles using mode analysis
-func (g *ConfigGenerator) GenerateAllAdaptiveProfiles(mode string, targetRTP float64) (*ConfigGeneratorResponse, error) {
+func (g *ConfigGenerator) GenerateAllAdaptiveProfiles(mode string, targetRTP, maxWinFreq float64) (*ConfigGeneratorResponse, error) {
+	if maxWinFreq <= 0 {
+		maxWinFreq = DefaultMaxWinFreq
+	}
+
 	profiles := []PlayerProfile{
 		ProfileLowVol,
 		ProfileMediumVol,
@@ -529,10 +691,10 @@ func (g *ConfigGenerator) GenerateAllAdaptiveProfiles(mode string, targetRTP flo
 	}
 
 	for _, profile := range profiles {
-		config, err := g.GenerateAdaptiveConfig(mode, targetRTP, maxWin, profile)
+		config, err := g.GenerateAdaptiveConfig(mode, targetRTP, maxWin, maxWinFreq, profile)
 		if err != nil {
 			// Use legacy fallback
-			config = g.GenerateConfig(targetRTP, maxWin, profile)
+			config = g.GenerateConfig(targetRTP, maxWin, maxWinFreq, profile)
 		}
 		response.Configs = append(response.Configs, *config)
 	}

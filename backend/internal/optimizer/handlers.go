@@ -701,8 +701,15 @@ func (h *Handlers) HandleGenerateConfigs(w http.ResponseWriter, r *http.Request)
 		}
 	}
 
+	maxWinFreq := DefaultMaxWinFreq
+	if s := r.URL.Query().Get("max_win_freq"); s != "" {
+		if parsed, err := strconv.ParseFloat(s, 64); err == nil && parsed > 0 {
+			maxWinFreq = parsed
+		}
+	}
+
 	generator := NewConfigGenerator()
-	response := generator.GenerateAllProfiles(targetRTP, maxWin)
+	response := generator.GenerateAllProfiles(targetRTP, maxWin, maxWinFreq)
 
 	common.WriteSuccess(w, response)
 }
@@ -737,7 +744,7 @@ func (h *Handlers) HandleGenerateConfig(w http.ResponseWriter, r *http.Request) 
 	}
 
 	generator := NewConfigGenerator()
-	config := generator.GenerateConfig(req.TargetRTP, req.MaxWin, req.Profile)
+	config := generator.GenerateConfig(req.TargetRTP, req.MaxWin, DefaultMaxWinFreq, req.Profile)
 
 	// Validate the generated config
 	if err := ValidateGeneratedConfig(config); err != nil {
@@ -794,14 +801,23 @@ func (h *Handlers) HandleGenerateConfigsForMode(w http.ResponseWriter, r *http.R
 		}
 	}
 
+	// Parse desired max win hit rate (1:N). Drives RTP budget for the MAX bucket
+	// so the rest of the buckets sum exactly to targetRTP - maxWinRTP.
+	maxWinFreq := DefaultMaxWinFreq
+	if s := r.URL.Query().Get("max_win_freq"); s != "" {
+		if parsed, err := strconv.ParseFloat(s, 64); err == nil && parsed > 0 {
+			maxWinFreq = parsed
+		}
+	}
+
 	// Use adaptive generation with analyzer
 	generator := NewConfigGeneratorWithAnalyzer(h.analyzer)
-	response, genErr := generator.GenerateAllAdaptiveProfiles(mode, targetRTP)
+	response, genErr := generator.GenerateAllAdaptiveProfiles(mode, targetRTP, maxWinFreq)
 
 	// Fallback to legacy generation on error
 	if genErr != nil || response == nil {
 		generator := NewConfigGenerator()
-		legacyResponse := generator.GenerateAllProfiles(targetRTP, maxPayout)
+		legacyResponse := generator.GenerateAllProfiles(targetRTP, maxPayout, maxWinFreq)
 		response = legacyResponse
 	}
 

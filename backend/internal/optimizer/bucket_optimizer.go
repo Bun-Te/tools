@@ -500,19 +500,29 @@ func (o *BucketOptimizer) OptimizeTable(table *stakergs.LookupTable) (*BucketOpt
 		finalRTP = calculateRTPFromWeights(newWeights, payouts)
 		converged = math.Abs(finalRTP-o.config.TargetRTP) <= o.config.RTPTolerance
 
-		// Recalculate bucket results and loss result since actual weights changed
+		// Recalculate bucket results and loss result since actual weights changed.
+		// bucketResults is filtered (empty/voided buckets skipped), so map by name
+		// to avoid index drift between assignments[] and bucketResults[].
+		assignmentByName := make(map[string]*bucketAssignment, len(assignments))
+		for j := range assignments {
+			assignmentByName[assignments[j].config.Name] = &assignments[j]
+		}
 		totalWeight := sumUint64(newWeights)
 		for i := range bucketResults {
+			a, ok := assignmentByName[bucketResults[i].Name]
+			if !ok {
+				continue
+			}
 			var bucketWeight uint64
 			var bucketRTP float64
-			for _, idx := range assignments[i].outcomeIndices {
+			for _, idx := range a.outcomeIndices {
 				bucketWeight += newWeights[idx]
 				if totalWeight > 0 {
 					prob := float64(newWeights[idx]) / float64(totalWeight)
 					bucketRTP += prob * payouts[idx]
 				}
 			}
-			
+
 			bucketResults[i].TotalWeight = bucketWeight
 			if bucketWeight > 0 && totalWeight > 0 {
 				bucketResults[i].ActualProbability = float64(bucketWeight) / float64(totalWeight)
@@ -763,8 +773,8 @@ func (o *BucketOptimizer) calculateTargetProbabilities(assignments []bucketAssig
 		for _, bucketIdx := range autoBucketIndices {
 			bucket := &assignments[bucketIdx]
 			exp := bucket.config.AutoExponent
-			if exp <= 0 {
-				exp = 1.0 // Default exponent
+			if exp == 0 && bucket.config.AutoExponent != 0 {
+				// no-op; keep zero as-is below
 			}
 			for _, p := range bucket.payouts {
 				if p > 0 {
@@ -777,9 +787,10 @@ func (o *BucketOptimizer) calculateTargetProbabilities(assignments []bucketAssig
 		for _, bucketIdx := range autoBucketIndices {
 			bucket := &assignments[bucketIdx]
 			exp := bucket.config.AutoExponent
-			if exp <= 0 {
-				exp = 1.0
-			}
+			// Negative and zero exponents are valid:
+			//   exp > 0  → mass on small payouts (low vol)
+			//   exp = 0  → uniform RTP per outcome
+			//   exp < 0  → mass on big payouts (high vol)
 
 			bucket.outcomeProbs = make([]float64, len(bucket.payouts))
 			var bucketTotalProb float64
@@ -1022,24 +1033,30 @@ func (o *BucketOptimizer) rebalanceWinsToTargetRTP(weights []uint64, payouts []f
 	result := make([]uint64, len(weights))
 	copy(result, weights)
 
-	// Identify fixed indices that shouldn't be tilted (e.g. Max Win freq targets)
+	// Identify fixed indices that shouldn't be tilted (e.g. Max Win freq targets).
+	// Mark EVERY outcome at max payout in each MaxWinFreq bucket — if multiple
+	// outcomes share the max payout, the override block split weight between
+	// them; tilting any of them would break that split.
 	fixedIndices := make(map[int]bool)
 
 	for _, bucket := range o.config.Buckets {
 		if bucket.Type == ConstraintMaxWinFreq && bucket.MaxWinFrequency > 0 {
-			// Find max payout in this range
+			// First pass: find the max payout in this range.
 			maxP := -1.0
-			maxI := -1
-			for i, p := range payouts {
-				if p >= bucket.MinPayout && (p < bucket.MaxPayout || (p <= bucket.MaxPayout && bucket.MaxPayout >= payouts[len(payouts)-1])) {
-					if p > maxP {
-						maxP = p
-						maxI = i
-					}
+			for _, p := range payouts {
+				inRange := p >= bucket.MinPayout && (p < bucket.MaxPayout || (p <= bucket.MaxPayout && bucket.MaxPayout >= payouts[len(payouts)-1]))
+				if inRange && p > maxP {
+					maxP = p
 				}
 			}
-			if maxI >= 0 {
-				fixedIndices[maxI] = true
+			if maxP <= 0 {
+				continue
+			}
+			// Second pass: pin every outcome at exactly maxP.
+			for i, p := range payouts {
+				if p == maxP {
+					fixedIndices[i] = true
+				}
 			}
 		}
 	}
@@ -1312,8 +1329,14 @@ func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignm
 	}
 
 	// Apply MaxWinFrequency overrides.
-	// bucketResults is filtered (skips empty/voided buckets), so look up the
-	// matching result by bucket name to keep the index in sync.
+	// Bucket frequency 1:N must reflect the rate of EVERY outcome in the bucket
+	// landing combined. The earlier inverse-proportional distribution (the else
+	// branch above) seeded weight on every outcome in the bucket, so just
+	// overriding the single max-payout outcome would leave residual weight on the
+	// rest, inflating the bucket's actual probability (the cause of the
+	// "configured 1:10M → observed 1:5.3M" symptom). Reset everything in the
+	// bucket to zero, then split the target weight equally among outcomes at the
+	// maximum payout (handles duplicates: same payout, distinct simIDs).
 	resultIdxByName := make(map[string]int, len(bucketResults))
 	for i := range bucketResults {
 		resultIdxByName[bucketResults[i].Name] = i
@@ -1322,26 +1345,49 @@ func (o *BucketOptimizer) calculateWeightsWithVoiding(payouts []float64, assignm
 		if bucket.config.Type != ConstraintMaxWinFreq || bucket.config.MaxWinFrequency <= 0 || len(bucket.outcomeIndices) == 0 {
 			continue
 		}
-		// Find max payout in this bucket
-		maxPayoutIdx := bucket.outcomeIndices[0]
-		maxPayout := payouts[maxPayoutIdx]
+
+		// Find max payout in this bucket.
+		maxPayout := payouts[bucket.outcomeIndices[0]]
 		for _, idx := range bucket.outcomeIndices {
 			if payouts[idx] > maxPayout {
 				maxPayout = payouts[idx]
-				maxPayoutIdx = idx
 			}
 		}
 
-		targetProb := 1.0 / bucket.config.MaxWinFrequency
-		requiredWeight := uint64(targetProb * float64(baseWeight))
-		if requiredWeight < o.config.MinWeight {
-			requiredWeight = o.config.MinWeight
+		// Collect every outcome at exactly maxPayout (duplicates allowed).
+		var maxIndices []int
+		for _, idx := range bucket.outcomeIndices {
+			if payouts[idx] == maxPayout {
+				maxIndices = append(maxIndices, idx)
+			}
+		}
+		if len(maxIndices) == 0 {
+			continue
 		}
 
-		oldW := weights[maxPayoutIdx]
-		weights[maxPayoutIdx] = requiredWeight
+		targetProb := 1.0 / bucket.config.MaxWinFrequency
+		totalRequiredWeight := targetProb * float64(baseWeight)
+		perOutcomeWeight := uint64(math.Round(totalRequiredWeight / float64(len(maxIndices))))
+		if perOutcomeWeight < o.config.MinWeight {
+			perOutcomeWeight = o.config.MinWeight
+		}
+
+		// Zero every outcome in this bucket, then assign weight to max-payout ones.
+		// Voided outcomes were already at 0 — keep them that way.
+		for _, idx := range bucket.outcomeIndices {
+			weights[idx] = 0
+		}
+		var bucketTotalNew uint64
+		for _, idx := range maxIndices {
+			if voidedSet[idx] {
+				continue
+			}
+			weights[idx] = perOutcomeWeight
+			bucketTotalNew += perOutcomeWeight
+		}
+
 		if ri, ok := resultIdxByName[bucket.config.Name]; ok {
-			bucketResults[ri].TotalWeight = bucketResults[ri].TotalWeight - oldW + requiredWeight
+			bucketResults[ri].TotalWeight = bucketTotalNew
 		}
 	}
 
@@ -1525,10 +1571,8 @@ func ValidateBuckets(buckets []BucketConfig) error {
 			}
 		case ConstraintAuto:
 			autoCount++
-			// AutoExponent is optional, defaults to 1.0 in calculateTargetProbabilities
-			if bucket.AutoExponent < 0 {
-				return fmt.Errorf("bucket %s: auto_exponent cannot be negative", bucket.Name)
-			}
+			// AutoExponent can be any real number — sign controls volatility
+			// direction (positive → low vol, negative → high vol).
 		case ConstraintMaxWinFreq:
 			if bucket.MaxWinFrequency <= 0 {
 				return fmt.Errorf("bucket %s: max_win_frequency must be > 0", bucket.Name)

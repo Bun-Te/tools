@@ -318,9 +318,11 @@
 		}
 	});
 
-	// Reload presets when RTP changes (in presets mode)
+	// Reload presets when RTP or maxwin hit rate changes (in presets mode).
+	// Backend rebalances bucket RTPs against the new MAX bucket budget so the
+	// math closes to target exactly.
 	$effect(() => {
-		const _ = targetRtp; // Track RTP changes
+		const _ = [targetRtp, presetMaxWinFreq];
 		if (initialized && uiMode === 'presets') {
 			loadPresetsForUI();
 		}
@@ -453,22 +455,8 @@
 				isLoading = false;
 				return;
 			}
-			// Inject/override the MAX bucket with the user-supplied maxwin hit rate
-			if (presetMaxWinFreq && presetMaxWinFreq > 0 && maxPayoutInInputUnits > 0) {
-				const eps = Math.max(maxPayoutInInputUnits * 1e-4, 0.001);
-				const maxBucket: BucketConfig = {
-					name: 'maxwin',
-					min_payout: maxPayoutInInputUnits - eps,
-					max_payout: maxPayoutInInputUnits + eps,
-					type: 'max_win_freq',
-					max_win_frequency: presetMaxWinFreq,
-					is_maxwin_bucket: true
-				};
-				const existingIdx = buckets.findIndex((b) => b.type === 'max_win_freq' || b.is_maxwin_bucket);
-				buckets = existingIdx >= 0
-					? buckets.map((b, i) => (i === existingIdx ? maxBucket : b))
-					: [...buckets, maxBucket];
-			}
+			// MAX bucket is already baked into the preset by the backend with the
+			// requested maxwin hit rate (see loadPresetsForUI URL params).
 		}
 
 		// Generate names and ensure buckets are normalized for the backend.
@@ -602,7 +590,8 @@
 			const requestRtp = targetRtp;
 
 			try {
-				const res = await fetch(`http://localhost:7754/api/optimizer/${encodeURIComponent(requestMode)}/generate-configs?target_rtp=${requestRtp}`);
+				const requestFreq = presetMaxWinFreq && presetMaxWinFreq > 0 ? presetMaxWinFreq : 10_000_000;
+			const res = await fetch(`http://localhost:7754/api/optimizer/${encodeURIComponent(requestMode)}/generate-configs?target_rtp=${requestRtp}&max_win_freq=${requestFreq}`);
 				const data = await res.json();
 
 				// Check if mode/rtp changed during the request (stale response)
@@ -644,7 +633,7 @@
 			} finally {
 				loadingProfiles = false;
 			}
-		}, 100); // 100ms debounce
+		}, 200); // 200ms debounce — covers slider drag + number-input typing bursts
 	}
 
 	// Analyze mode for RTP feasibility
