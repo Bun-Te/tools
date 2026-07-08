@@ -16,8 +16,9 @@ import (
 	"lutexplorer/internal/lut"
 	"lutexplorer/internal/ws"
 
-	"github.com/klauspost/compress/zstd"
 	"stakergs"
+
+	"github.com/klauspost/compress/zstd"
 )
 
 // Priority defines the loading priority level.
@@ -593,10 +594,10 @@ func (bl *BackgroundLoader) loadModeInternalCancel(mode stakergs.ModeConfig, can
 		Type: ws.MsgLoadingComplete,
 		Mode: mode.Name,
 		Payload: map[string]interface{}{
-			"mode":         mode.Name,
-			"total_lines":  lineNum,
-			"total_bytes":  countingReader.BytesRead(),
-			"elapsed_ms":   elapsed.Milliseconds(),
+			"mode":          mode.Name,
+			"total_lines":   lineNum,
+			"total_bytes":   countingReader.BytesRead(),
+			"elapsed_ms":    elapsed.Milliseconds(),
 			"lines_per_sec": float64(lineNum) / elapsed.Seconds(),
 		},
 	})

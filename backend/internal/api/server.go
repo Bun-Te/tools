@@ -17,8 +17,9 @@ import (
 	"lutexplorer/internal/watcher"
 	"lutexplorer/internal/ws"
 
-	"github.com/rs/cors"
 	"stakergs"
+
+	"github.com/rs/cors"
 )
 
 // Server is the HTTP API server.
@@ -169,10 +170,11 @@ func (s *Server) Start() error {
 
 	// CORS middleware
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
+		AllowOriginFunc:     func(origin string) bool { return true },
+		AllowedMethods:      []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:      []string{"*"},
+		AllowCredentials:    true,
+		AllowPrivateNetwork: true, // Required for modern Chrome local development
 	})
 
 	// Logging middleware
@@ -281,10 +283,11 @@ func (s *Server) GetHandler() http.Handler {
 
 	// CORS middleware
 	c := cors.New(cors.Options{
-		AllowedOrigins:   []string{"*"},
-		AllowedMethods:   []string{"GET", "POST", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"*"},
-		AllowCredentials: true,
+		AllowOriginFunc:     func(origin string) bool { return true },
+		AllowedMethods:      []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		AllowedHeaders:      []string{"*"},
+		AllowCredentials:    true,
+		AllowPrivateNetwork: true, // Required for modern Chrome local development
 	})
 
 	// Logging middleware
